@@ -171,7 +171,7 @@ export const userAPI = {
     }
     
     try {
-      const response = await api.get('/api/users');
+      const response = await api.get('/users');
       const backendUsers: BackendUser[] = response.data.users || response.data;
       
       // Inicializar mapeamento de usuários
@@ -187,28 +187,28 @@ export const userAPI = {
 
   getById: async (id: number): Promise<User> => {
     // Converter ID do frontend para backend se necessário
-    const response = await api.get(`/api/users/${id}`);
+    const response = await api.get(`/users/${id}`);
     return transformBackendUserToFrontend(response.data);
   },
 
   create: async (userData: Omit<User, 'id' | 'criadoEm'>): Promise<User> => {
     const backendData = transformFrontendUserToBackend(userData);
-    const response = await api.post('/api/users', backendData);
+    const response = await api.post('/users', backendData);
     return transformBackendUserToFrontend(response.data);
   },
 
   update: async (id: number, userData: Partial<User>): Promise<User> => {
     const backendData = transformFrontendUserToBackend(userData);
-    const response = await api.put(`/api/users/${id}`, backendData);
+    const response = await api.put(`/users/${id}`, backendData);
     return transformBackendUserToFrontend(response.data);
   },
 
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/users/${id}`);
+    await api.delete(`/users/${id}`);
   },
 
   getProfile: async (): Promise<User> => {
-    const response = await api.get('/api/users/profile/me');
+    const response = await api.get('/users/profile/me');
     return transformBackendUserToFrontend(response.data);
   }
 };
@@ -236,7 +236,7 @@ export const processAPI = {
     }
     
     try {
-      const response = await api.get('/api/processes', { params });
+      const response = await api.get('/processes', { params });
       const backendProcesses: BackendProcess[] = response.data.processes || response.data;
       
       return {
@@ -258,32 +258,32 @@ export const processAPI = {
   },
 
   getById: async (id: string): Promise<Processo> => {
-    const response = await api.get(`/api/processes/${id}`);
+    const response = await api.get(`/processes/${id}`);
     return transformBackendProcessToFrontend(response.data);
   },
 
   create: async (processData: Omit<Processo, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Processo> => {
     const backendData = transformFrontendProcessToBackend(processData);
-    const response = await api.post('/api/processes', backendData);
+    const response = await api.post('/processes', backendData);
     return transformBackendProcessToFrontend(response.data);
   },
 
   update: async (id: string, processData: Partial<Processo>): Promise<Processo> => {
     const backendData = transformFrontendProcessToBackend(processData);
-    const response = await api.put(`/api/processes/${id}`, backendData);
+    const response = await api.put(`/processes/${id}`, backendData);
     return transformBackendProcessToFrontend(response.data);
   },
 
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/api/processes/${id}`);
+    await api.delete(`/processes/${id}`);
   },
 
   addComment: async (id: string, text: string): Promise<void> => {
-    await api.post(`/api/processes/${id}/comments`, { text });
+    await api.post(`/processes/${id}/comments`, { text });
   },
 
   getStats: async () => {
-    const response = await api.get('/api/processes/stats/dashboard');
+    const response = await api.get('/processes/stats/dashboard');
     return response.data;
   }
 };
@@ -312,7 +312,7 @@ export const taskAPI = {
     }
     
     try {
-      const response = await api.get('/api/tasks', { params });
+      const response = await api.get('/tasks', { params });
       const backendTasks: BackendTask[] = response.data.tasks || response.data;
       
       return {
@@ -334,38 +334,38 @@ export const taskAPI = {
   },
 
   getById: async (id: string): Promise<Tarefa> => {
-    const response = await api.get(`/api/tasks/${id}`);
+    const response = await api.get(`/tasks/${id}`);
     return transformBackendTaskToFrontend(response.data);
   },
 
   create: async (taskData: Omit<Tarefa, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Tarefa> => {
     const backendData = transformFrontendTaskToBackend(taskData);
-    const response = await api.post('/api/tasks', backendData);
+    const response = await api.post('/tasks', backendData);
     return transformBackendTaskToFrontend(response.data);
   },
 
   update: async (id: string, taskData: Partial<Tarefa>): Promise<Tarefa> => {
     const backendData = transformFrontendTaskToBackend(taskData);
-    const response = await api.put(`/api/tasks/${id}`, backendData);
+    const response = await api.put(`/tasks/${id}`, backendData);
     return transformBackendTaskToFrontend(response.data);
   },
 
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/api/tasks/${id}`);
+    await api.delete(`/tasks/${id}`);
   },
 
   addComment: async (id: string, text: string): Promise<void> => {
-    await api.post(`/api/tasks/${id}/comments`, { text });
+    await api.post(`/tasks/${id}/comments`, { text });
   },
 
   getMyTasks: async (): Promise<Tarefa[]> => {
-    const response = await api.get('/api/tasks/my/tasks');
+    const response = await api.get('/tasks/my/tasks');
     const backendTasks: BackendTask[] = response.data.tasks || response.data;
     return backendTasks.map(transformBackendTaskToFrontend);
   },
 
   getStats: async () => {
-    const response = await api.get('/api/tasks/stats/dashboard');
+    const response = await api.get('/tasks/stats/dashboard');
     return response.data;
   }
 };
@@ -373,23 +373,23 @@ export const taskAPI = {
 // Serviços de Equipes
 export const teamAPI = {
   getMembers: async (): Promise<User[]> => {
-    const response = await api.get('/api/teams/members');
+    const response = await api.get('/teams/members');
     const backendUsers: BackendUser[] = response.data.members || response.data;
     return backendUsers.map(transformBackendUserToFrontend);
   },
 
   getStats: async () => {
-    const response = await api.get('/api/teams/stats');
+    const response = await api.get('/teams/stats');
     return response.data;
   },
 
   getMemberPerformance: async (id: number) => {
-    const response = await api.get(`/api/teams/member/${id}/performance`);
+    const response = await api.get(`/teams/member/${id}/performance`);
     return response.data;
   },
 
   getDepartments: async () => {
-    const response = await api.get('/api/teams/departments');
+    const response = await api.get('/teams/departments');
     return response.data;
   }
 };
@@ -402,7 +402,7 @@ export const fileAPI = {
     formData.append('type', type);
     formData.append('entityId', entityId);
     
-    const response = await api.post('/api/files/upload', formData, {
+    const response = await api.post('/files/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -412,7 +412,7 @@ export const fileAPI = {
   },
 
   download: async (fileId: string): Promise<Blob> => {
-    const response = await api.get(`/api/files/download/${fileId}`, {
+    const response = await api.get(`/files/download/${fileId}`, {
       responseType: 'blob',
     });
     
@@ -420,7 +420,7 @@ export const fileAPI = {
   },
 
   delete: async (fileId: string): Promise<void> => {
-    await api.delete(`/api/files/${fileId}`);
+    await api.delete(`/files/${fileId}`);
   }
 };
 
