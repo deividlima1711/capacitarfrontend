@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { 
-  transformBackendUserToFrontend, 
+import type { AxiosError, AxiosResponse } from 'axios';
+import {
+  transformBackendUserToFrontend,
   transformFrontendUserToBackend,
   transformBackendProcessToFrontend,
   transformFrontendProcessToBackend,
@@ -32,42 +33,37 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (token && config.headers) {
+      (config.headers as any).Authorization = `Bearer ${token}`;
     }
     if (process.env.NODE_ENV === 'development') {
       console.log('API Request:', config.method?.toUpperCase(), config.url);
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Interceptor para tratar respostas
 api.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse) => {
     if (process.env.NODE_ENV === 'development') {
       console.log('API Response:', response.status, response.config.url);
     }
     return response;
   },
-  (error) => {
+  (error: AxiosError) => {
     if (process.env.NODE_ENV === 'development') {
       console.log('API Error:', error.response?.status, error.config?.url, error.message);
     }
-    
     // Se há erro de conexão ou 401/404, ativar modo mock automaticamente
     if (!error.response || error.response.status === 401 || error.response.status === 404 || error.code === 'NETWORK_ERROR') {
       console.warn('API não disponível, ativando modo offline com dados mockados');
       localStorage.setItem('useMockData', 'true');
     }
-    
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Não redirecionar automaticamente para login se estivermos usando dados mock
       if (!shouldUseMockData()) {
         window.location.href = '/login';
       }
@@ -78,47 +74,42 @@ api.interceptors.response.use(
 
 // Serviços de Autenticação
 export const authAPI = {
-  login: async (username: string, password: string) => {
-    // Se deve usar dados mockados, simular login
+  login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
     if (shouldUseMockData()) {
       await simulateApiDelay(1000);
       console.log('Usando autenticação mockada');
-      
-      // Verificar credenciais mockadas
-      if ((username === 'admin' && password === 'Lima12345') || 
-          (username === 'usuario1' && password === '123456') ||
-          (username === 'usuario2' && password === '123456')) {
+      if (
+        (username === 'admin' && password === 'Lima12345') ||
+        (username === 'usuario1' && password === '123456') ||
+        (username === 'usuario2' && password === '123456')
+      ) {
         const user = mockUsers.find(u => u.username === username);
         return {
           token: 'mock-jwt-token-' + Date.now(),
-          user: user
+          user: user as User
         };
       } else {
         throw new Error('Credenciais inválidas');
       }
     }
-    
     try {
-      const response = await api.post('/auth/login', { username, password });
-      
-      // Transformar dados do usuário
-      if (response.data.user) {
-        response.data.user = transformBackendUserToFrontend(response.data.user);
-      }
-      
-      return response.data;
+      const response = await api.post<{ token: string; user: BackendUser }>('/auth/login', { username, password });
+      return {
+        token: response.data.token,
+        user: transformBackendUserToFrontend(response.data.user)
+      };
     } catch (error) {
       console.warn('Erro na autenticação da API, tentando modo offline:', error);
       localStorage.setItem('useMockData', 'true');
-      
-      // Tentar novamente com dados mockados
-      if ((username === 'admin' && password === 'Lima12345') || 
-          (username === 'usuario1' && password === '123456') ||
-          (username === 'usuario2' && password === '123456')) {
+      if (
+        (username === 'admin' && password === 'Lima12345') ||
+        (username === 'usuario1' && password === '123456') ||
+        (username === 'usuario2' && password === '123456')
+      ) {
         const user = mockUsers.find(u => u.username === username);
         return {
           token: 'mock-jwt-token-' + Date.now(),
-          user: user
+          user: user as User
         };
       } else {
         throw new Error('Credenciais inválidas');
@@ -126,36 +117,28 @@ export const authAPI = {
     }
   },
 
-  register: async (username: string, password: string, email?: string) => {
-    const response = await api.post('/auth/register', { username, password, email });
-    
-    if (response.data.user) {
-      response.data.user = transformBackendUserToFrontend(response.data.user);
-    }
-    
+  register: async (username: string, password: string, email?: string): Promise<{ token: string; user: User }> => {
+    const response = await api.post<{ token: string; user: BackendUser }>('/auth/register', { username, password, email });
+    return {
+      token: response.data.token,
+      user: transformBackendUserToFrontend(response.data.user)
+    };
+  },
+
+  verify: async (): Promise<{ user: User }> => {
+    const response = await api.get<{ user: BackendUser }>('/auth/verify');
+    return {
+      user: transformBackendUserToFrontend(response.data.user)
+    };
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean }> => {
+    const response = await api.put<{ success: boolean }>('/auth/change-password', { currentPassword, newPassword });
     return response.data;
   },
 
-  verify: async () => {
-    const response = await api.get('/auth/verify');
-    
-    if (response.data.user) {
-      response.data.user = transformBackendUserToFrontend(response.data.user);
-    }
-    
-    return response.data;
-  },
-
-  changePassword: async (currentPassword: string, newPassword: string) => {
-    const response = await api.put('/auth/change-password', { 
-      currentPassword, 
-      newPassword 
-    });
-    return response.data;
-  },
-
-  logout: async () => {
-    const response = await api.post('/auth/logout');
+  logout: async (): Promise<{ success: boolean }> => {
+    const response = await api.post<{ success: boolean }>('/auth/logout');
     return response.data;
   }
 };
@@ -163,43 +146,35 @@ export const authAPI = {
 // Serviços de Usuários
 export const userAPI = {
   getAll: async (): Promise<User[]> => {
-    // Se deve usar dados mockados, retornar dados mock
     if (shouldUseMockData()) {
       await simulateApiDelay(500);
-      console.log('Usando dados mockados para usuários');
       return mockUsers;
     }
-    
     try {
-      const response = await api.get('/users');
-      const backendUsers: BackendUser[] = response.data.users || response.data;
-      
-      // Inicializar mapeamento de usuários
+      const response = await api.get<{ users: BackendUser[] }>('/users');
+      const backendUsers: BackendUser[] = response.data.users || [];
       initializeUserMapping(backendUsers);
-      
       return backendUsers.map(transformBackendUserToFrontend);
     } catch (error) {
-      console.warn('Erro ao carregar usuários da API, usando dados mockados:', error);
       localStorage.setItem('useMockData', 'true');
       return mockUsers;
     }
   },
 
   getById: async (id: number): Promise<User> => {
-    // Converter ID do frontend para backend se necessário
-    const response = await api.get(`/users/${id}`);
+    const response = await api.get<BackendUser>(`/users/${id}`);
     return transformBackendUserToFrontend(response.data);
   },
 
   create: async (userData: Omit<User, 'id' | 'criadoEm'>): Promise<User> => {
     const backendData = transformFrontendUserToBackend(userData);
-    const response = await api.post('/users', backendData);
+    const response = await api.post<BackendUser>('/users', backendData);
     return transformBackendUserToFrontend(response.data);
   },
 
   update: async (id: number, userData: Partial<User>): Promise<User> => {
     const backendData = transformFrontendUserToBackend(userData);
-    const response = await api.put(`/users/${id}`, backendData);
+    const response = await api.put<BackendUser>(`/users/${id}`, backendData);
     return transformBackendUserToFrontend(response.data);
   },
 
@@ -208,7 +183,7 @@ export const userAPI = {
   },
 
   getProfile: async (): Promise<User> => {
-    const response = await api.get('/users/profile/me');
+    const response = await api.get<BackendUser>('/users/profile/me');
     return transformBackendUserToFrontend(response.data);
   }
 };
@@ -223,10 +198,8 @@ export const processAPI = {
     responsible?: string;
     search?: string;
   }): Promise<{ processos: Processo[]; total: number; totalPages: number; currentPage: number }> => {
-    // Se deve usar dados mockados, retornar dados mock
     if (shouldUseMockData()) {
       await simulateApiDelay(500);
-      console.log('Usando dados mockados para processos');
       return {
         processos: mockProcessos,
         total: mockProcessos.length,
@@ -234,11 +207,9 @@ export const processAPI = {
         currentPage: 1
       };
     }
-    
     try {
-      const response = await api.get('/processes', { params });
-      const backendProcesses: BackendProcess[] = response.data.processes || response.data;
-      
+      const response = await api.get<{ processes: BackendProcess[]; total: number; totalPages: number; currentPage: number }>('/processes', { params });
+      const backendProcesses: BackendProcess[] = response.data.processes || [];
       return {
         processos: backendProcesses.map(transformBackendProcessToFrontend),
         total: response.data.total || backendProcesses.length,
@@ -246,7 +217,6 @@ export const processAPI = {
         currentPage: response.data.currentPage || 1
       };
     } catch (error) {
-      console.warn('Erro ao carregar processos da API, usando dados mockados:', error);
       localStorage.setItem('useMockData', 'true');
       return {
         processos: mockProcessos,
@@ -258,19 +228,19 @@ export const processAPI = {
   },
 
   getById: async (id: string): Promise<Processo> => {
-    const response = await api.get(`/processes/${id}`);
+    const response = await api.get<BackendProcess>(`/processes/${id}`);
     return transformBackendProcessToFrontend(response.data);
   },
 
   create: async (processData: Omit<Processo, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Processo> => {
     const backendData = transformFrontendProcessToBackend(processData);
-    const response = await api.post('/processes', backendData);
+    const response = await api.post<BackendProcess>('/processes', backendData);
     return transformBackendProcessToFrontend(response.data);
   },
 
   update: async (id: string, processData: Partial<Processo>): Promise<Processo> => {
     const backendData = transformFrontendProcessToBackend(processData);
-    const response = await api.put(`/processes/${id}`, backendData);
+    const response = await api.put<BackendProcess>(`/processes/${id}`, backendData);
     return transformBackendProcessToFrontend(response.data);
   },
 
@@ -282,7 +252,7 @@ export const processAPI = {
     await api.post(`/processes/${id}/comments`, { text });
   },
 
-  getStats: async () => {
+  getStats: async (): Promise<any> => {
     const response = await api.get('/processes/stats/dashboard');
     return response.data;
   }
@@ -299,10 +269,8 @@ export const taskAPI = {
     process?: string;
     search?: string;
   }): Promise<{ tarefas: Tarefa[]; total: number; totalPages: number; currentPage: number }> => {
-    // Se deve usar dados mockados, retornar dados mock
     if (shouldUseMockData()) {
       await simulateApiDelay(500);
-      console.log('Usando dados mockados para tarefas');
       return {
         tarefas: mockTarefas,
         total: mockTarefas.length,
@@ -310,11 +278,9 @@ export const taskAPI = {
         currentPage: 1
       };
     }
-    
     try {
-      const response = await api.get('/tasks', { params });
-      const backendTasks: BackendTask[] = response.data.tasks || response.data;
-      
+      const response = await api.get<{ tasks: BackendTask[]; total: number; totalPages: number; currentPage: number }>('/tasks', { params });
+      const backendTasks: BackendTask[] = response.data.tasks || [];
       return {
         tarefas: backendTasks.map(transformBackendTaskToFrontend),
         total: response.data.total || backendTasks.length,
@@ -322,7 +288,6 @@ export const taskAPI = {
         currentPage: response.data.currentPage || 1
       };
     } catch (error) {
-      console.warn('Erro ao carregar tarefas da API, usando dados mockados:', error);
       localStorage.setItem('useMockData', 'true');
       return {
         tarefas: mockTarefas,
@@ -334,19 +299,19 @@ export const taskAPI = {
   },
 
   getById: async (id: string): Promise<Tarefa> => {
-    const response = await api.get(`/tasks/${id}`);
+    const response = await api.get<BackendTask>(`/tasks/${id}`);
     return transformBackendTaskToFrontend(response.data);
   },
 
   create: async (taskData: Omit<Tarefa, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Tarefa> => {
     const backendData = transformFrontendTaskToBackend(taskData);
-    const response = await api.post('/tasks', backendData);
+    const response = await api.post<BackendTask>('/tasks', backendData);
     return transformBackendTaskToFrontend(response.data);
   },
 
   update: async (id: string, taskData: Partial<Tarefa>): Promise<Tarefa> => {
     const backendData = transformFrontendTaskToBackend(taskData);
-    const response = await api.put(`/tasks/${id}`, backendData);
+    const response = await api.put<BackendTask>(`/tasks/${id}`, backendData);
     return transformBackendTaskToFrontend(response.data);
   },
 
@@ -359,12 +324,12 @@ export const taskAPI = {
   },
 
   getMyTasks: async (): Promise<Tarefa[]> => {
-    const response = await api.get('/tasks/my/tasks');
-    const backendTasks: BackendTask[] = response.data.tasks || response.data;
+    const response = await api.get<{ tasks: BackendTask[] }>('/tasks/my/tasks');
+    const backendTasks: BackendTask[] = response.data.tasks || [];
     return backendTasks.map(transformBackendTaskToFrontend);
   },
 
-  getStats: async () => {
+  getStats: async (): Promise<any> => {
     const response = await api.get('/tasks/stats/dashboard');
     return response.data;
   }
@@ -373,49 +338,47 @@ export const taskAPI = {
 // Serviços de Equipes
 export const teamAPI = {
   getMembers: async (): Promise<User[]> => {
-    const response = await api.get('/teams/members');
-    const backendUsers: BackendUser[] = response.data.members || response.data;
+    const response = await api.get<{ members: BackendUser[] }>('/teams/members');
+    const backendUsers: BackendUser[] = response.data.members || [];
     return backendUsers.map(transformBackendUserToFrontend);
   },
 
-  getStats: async () => {
+  getStats: async (): Promise<any> => {
     const response = await api.get('/teams/stats');
     return response.data;
   },
 
-  getMemberPerformance: async (id: number) => {
+  getMemberPerformance: async (id: number): Promise<any> => {
     const response = await api.get(`/teams/member/${id}/performance`);
     return response.data;
   },
 
-  getDepartments: async () => {
+  getDepartments: async (): Promise<any> => {
     const response = await api.get('/teams/departments');
     return response.data;
   }
 };
 
-// Serviços de Upload/Download (placeholder para implementação futura)
+// Serviços de Upload/Download
 export const fileAPI = {
   upload: async (file: File, type: 'process' | 'task', entityId: string): Promise<{ url: string; name: string }> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', type);
     formData.append('entityId', entityId);
-    
-    const response = await api.post('/files/upload', formData, {
+
+    const response = await api.post<{ url: string; name: string }>('/files/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    
     return response.data;
   },
 
   download: async (fileId: string): Promise<Blob> => {
-    const response = await api.get(`/files/download/${fileId}`, {
+    const response = await api.get<Blob>(`/files/download/${fileId}`, {
       responseType: 'blob',
     });
-    
     return response.data;
   },
 
@@ -426,19 +389,19 @@ export const fileAPI = {
 
 // Serviços Gerais
 export const generalAPI = {
-  getStatus: async () => {
+  getStatus: async (): Promise<any> => {
     const response = await api.get('/');
     return response.data;
   },
 
-  getDashboardStats: async () => {
+  getDashboardStats: async (): Promise<any> => {
     try {
       const [processStats, taskStats, teamStats] = await Promise.all([
         processAPI.getStats(),
         taskAPI.getStats(),
         teamAPI.getStats()
       ]);
-      
+
       return {
         processes: processStats,
         tasks: taskStats,
@@ -456,4 +419,3 @@ export const generalAPI = {
 };
 
 export default api;
-
