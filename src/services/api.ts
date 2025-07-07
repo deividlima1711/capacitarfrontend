@@ -56,11 +56,8 @@ api.interceptors.response.use(
     if (process.env.NODE_ENV === 'development') {
       console.log('API Error:', error.response?.status, error.config?.url, error.message);
     }
-    // Se há erro de conexão ou 401/404, ativar modo mock automaticamente
-    if (!error.response || error.response.status === 401 || error.response.status === 404 || error.code === 'NETWORK_ERROR') {
-      console.warn('API não disponível, ativando modo offline com dados mockados');
-      localStorage.setItem('useMockData', 'true');
-    }
+    // Se há erro de conexão ou 401/404, NÃO ativar modo mock automaticamente
+    // Removido: localStorage.setItem('useMockData', 'true');
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -156,7 +153,7 @@ export const userAPI = {
       initializeUserMapping(backendUsers);
       return backendUsers.map(transformBackendUserToFrontend);
     } catch (error) {
-      localStorage.setItem('useMockData', 'true');
+      // Removido: localStorage.setItem('useMockData', 'true');
       return mockUsers;
     }
   },
@@ -217,7 +214,7 @@ export const processAPI = {
         currentPage: response.data.currentPage || 1
       };
     } catch (error) {
-      localStorage.setItem('useMockData', 'true');
+      // Removido: localStorage.setItem('useMockData', 'true');
       return {
         processos: mockProcessos,
         total: mockProcessos.length,
@@ -288,7 +285,7 @@ export const taskAPI = {
         currentPage: response.data.currentPage || 1
       };
     } catch (error) {
-      localStorage.setItem('useMockData', 'true');
+      // Removido: localStorage.setItem('useMockData', 'true');
       return {
         tarefas: mockTarefas,
         total: mockTarefas.length,
