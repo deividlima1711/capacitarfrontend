@@ -56,8 +56,11 @@ api.interceptors.response.use(
     if (process.env.NODE_ENV === 'development') {
       console.log('API Error:', error.response?.status, error.config?.url, error.message);
     }
-    // Se há erro de conexão ou 401/404, NÃO ativar modo mock automaticamente
-    // Removido: localStorage.setItem('useMockData', 'true');
+    // Se receber 429 (Too Many Requests), exibir mensagem clara e não tentar novamente
+    if (error.response?.status === 429) {
+      alert('Muitas requisições! Aguarde alguns minutos antes de tentar novamente.');
+      // Opcional: você pode adicionar lógica para bloquear novas tentativas por um tempo
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
