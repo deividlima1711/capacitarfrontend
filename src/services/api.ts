@@ -23,51 +23,117 @@ if (process.env.NODE_ENV === 'development') {
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 15000, // Aumentado para 15 segundos
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Função para validar token JWT
+const isValidJWT = (token: string): boolean => {
+  if (!token || typeof token !== 'string') {
+    return false;
+  }
+  
+  // Remover espaços em branco
+  token = token.trim();
+  
+  // Verificar se tem 3 partes separadas por ponto
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    console.warn('🔍 Token inválido: não tem 3 partes');
+    return false;
+  }
+  
+  // Verificar se cada parte é base64 válida
+  try {
+    for (const part of parts) {
+      if (!part || part.length === 0) {
+        console.warn('🔍 Token inválido: parte vazia');
+        return false;
+      }
+      // Tentar decodificar base64 (adicionar padding se necessário)
+      const padded = part + '='.repeat((4 - part.length % 4) % 4);
+      atob(padded);
+    }
+    return true;
+  } catch (error) {
+    console.warn('🔍 Token inválido: erro na decodificação base64');
+    return false;
+  }
+};
+
+// Função para limpar dados de autenticação
+const clearAuthData = () => {
+  console.log('🧹 Limpando dados de autenticação');
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('useMockData');
+};
+
 // Interceptor para adicionar token automaticamente
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    
     if (token && config.headers) {
-      (config.headers as any).Authorization = `Bearer ${token}`;
+      // Validar token antes de enviar
+      if (isValidJWT(token)) {
+        (config.headers as any).Authorization = `Bearer ${token}`;
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔐 Token adicionado à requisição: ${token.substring(0, 20)}...`);
+        }
+      } else {
+        console.warn('⚠️ Token inválido detectado, removendo...');
+        clearAuthData();
+      }
     }
+    
     if (process.env.NODE_ENV === 'development') {
-      console.log('API Request:', config.method?.toUpperCase(), config.url);
+      console.log('📤 API Request:', config.method?.toUpperCase(), config.url);
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('❌ Erro no interceptor de request:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Interceptor para tratar respostas
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('API Response:', response.status, response.config.url);
+      console.log('📥 API Response:', response.status, response.config.url);
     }
     return response;
   },
   (error: AxiosError) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('API Error:', error.response?.status, error.config?.url, error.message);
+      console.log('❌ API Error:', error.response?.status, error.config?.url, error.message);
     }
-    // Se receber 429 (Too Many Requests), exibir mensagem clara e não tentar novamente
+    
+    // Tratar diferentes tipos de erro
     if (error.response?.status === 429) {
+      console.warn('⚠️ Rate limit atingido');
       alert('Muitas requisições! Aguarde alguns minutos antes de tentar novamente.');
-      // Opcional: você pode adicionar lógica para bloquear novas tentativas por um tempo
-    }
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    } else if (error.response?.status === 401) {
+      console.warn('⚠️ Token inválido ou expirado');
+      clearAuthData();
       if (!shouldUseMockData()) {
-        window.location.href = '/login';
+        // Evitar loop infinito de redirecionamento
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
+    } else if (error.response?.status === 500) {
+      console.error('❌ Erro interno do servidor');
+    } else if (error.code === 'ECONNABORTED') {
+      console.error('❌ Timeout na requisição');
+    } else if (error.code === 'ERR_NETWORK') {
+      console.error('❌ Erro de rede');
     }
+    
     return Promise.reject(error);
   }
 );
@@ -75,53 +141,117 @@ api.interceptors.response.use(
 // Serviços de Autenticação
 export const authAPI = {
   login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
+    // Validar entrada
+    if (!username || !password) {
+      throw new Error('Usuário e senha são obrigatórios');
+    }
+    
     if (shouldUseMockData()) {
       await simulateApiDelay(1000);
-      console.log('Usando autenticação mockada');
+      console.log('🔄 Usando autenticação mockada');
       if (
         (username === 'admin' && password === 'Lima12345') ||
         (username === 'usuario1' && password === '123456') ||
         (username === 'usuario2' && password === '123456')
       ) {
         const user = mockUsers.find(u => u.username === username);
+        const mockToken = 'mock-jwt-token-' + Date.now();
+        
+        // Armazenar dados mockados
+        localStorage.setItem('token', mockToken);
+        localStorage.setItem('user', JSON.stringify(user));
+        
         return {
-          token: 'mock-jwt-token-' + Date.now(),
+          token: mockToken,
           user: user as User
         };
       } else {
         throw new Error('Credenciais inválidas');
       }
     }
+    
     try {
-      const response = await api.post<{ token: string; user: BackendUser }>('/api/auth/login', { username, password });
-      return {
-        token: response.data.token,
-        user: transformBackendUserToFrontend(response.data.user)
-      };
-    } catch (error) {
-      console.warn('Erro na autenticação da API, tentando modo offline:', error);
-      localStorage.setItem('useMockData', 'true');
-      if (
-        (username === 'admin' && password === 'Lima12345') ||
-        (username === 'usuario1' && password === '123456') ||
-        (username === 'usuario2' && password === '123456')
-      ) {
-        const user = mockUsers.find(u => u.username === username);
-        return {
-          token: 'mock-jwt-token-' + Date.now(),
-          user: user as User
-        };
-      } else {
-        throw new Error('Credenciais inválidas');
+      console.log(`🔐 Tentando login para usuário: ${username}`);
+      
+      const response = await api.post<{ token: string; user: BackendUser }>('/api/auth/login', { 
+        username: username.trim(), 
+        password 
+      });
+      
+      const { token, user } = response.data;
+      
+      // Validar resposta
+      if (!token || !user) {
+        throw new Error('Resposta inválida do servidor');
       }
+      
+      // Validar token recebido
+      if (!isValidJWT(token)) {
+        throw new Error('Token recebido é inválido');
+      }
+      
+      const transformedUser = transformBackendUserToFrontend(user);
+      
+      // Armazenar dados
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(transformedUser));
+      localStorage.removeItem('useMockData'); // Remover flag de mock se existir
+      
+      console.log(`✅ Login realizado com sucesso para ${username}`);
+      
+      return {
+        token,
+        user: transformedUser
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Erro no login:', error.message);
+      
+      // Se for erro de rede, tentar modo offline
+      if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+        console.warn('🔄 Erro de conexão, tentando modo offline...');
+        localStorage.setItem('useMockData', 'true');
+        
+        if (
+          (username === 'admin' && password === 'Lima12345') ||
+          (username === 'usuario1' && password === '123456') ||
+          (username === 'usuario2' && password === '123456')
+        ) {
+          const user = mockUsers.find(u => u.username === username);
+          const mockToken = 'mock-jwt-token-' + Date.now();
+          
+          localStorage.setItem('token', mockToken);
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          return {
+            token: mockToken,
+            user: user as User
+          };
+        }
+      }
+      
+      // Propagar erro original
+      throw error;
     }
   },
 
   register: async (username: string, password: string, email?: string): Promise<{ token: string; user: User }> => {
     const response = await api.post<{ token: string; user: BackendUser }>('/api/auth/register', { username, password, email });
+    
+    const { token, user } = response.data;
+    
+    if (!isValidJWT(token)) {
+      throw new Error('Token recebido é inválido');
+    }
+    
+    const transformedUser = transformBackendUserToFrontend(user);
+    
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(transformedUser));
+    
     return {
-      token: response.data.token,
-      user: transformBackendUserToFrontend(response.data.user)
+      token,
+      user: transformedUser
     };
   },
 
@@ -138,7 +268,20 @@ export const authAPI = {
   },
 
   logout: async (): Promise<{ success: boolean }> => {
-    const response = await api.post<{ success: boolean }>('/api/auth/logout');
+    try {
+      const response = await api.post<{ success: boolean }>('/api/auth/logout');
+      clearAuthData();
+      return response.data;
+    } catch (error) {
+      // Mesmo se der erro no servidor, limpar dados locais
+      clearAuthData();
+      return { success: true };
+    }
+  },
+
+  // Novo método para testar JWT
+  testJWT: async (): Promise<any> => {
+    const response = await api.get('/api/auth/test-jwt');
     return response.data;
   }
 };
@@ -156,7 +299,7 @@ export const userAPI = {
       initializeUserMapping(backendUsers);
       return backendUsers.map(transformBackendUserToFrontend);
     } catch (error) {
-      // Removido: localStorage.setItem('useMockData', 'true');
+      console.warn('⚠️ Erro ao buscar usuários, usando dados mockados');
       return mockUsers;
     }
   },
@@ -217,7 +360,7 @@ export const processAPI = {
         currentPage: response.data.currentPage || 1
       };
     } catch (error) {
-      // Removido: localStorage.setItem('useMockData', 'true');
+      console.warn('⚠️ Erro ao buscar processos, usando dados mockados');
       return {
         processos: mockProcessos,
         total: mockProcessos.length,
@@ -253,8 +396,13 @@ export const processAPI = {
   },
 
   getStats: async (): Promise<any> => {
-    const response = await api.get('/api/processes/stats/dashboard');
-    return response.data;
+    try {
+      const response = await api.get('/api/processes/stats/dashboard');
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar estatísticas de processos');
+      throw error;
+    }
   }
 };
 
@@ -288,7 +436,7 @@ export const taskAPI = {
         currentPage: response.data.currentPage || 1
       };
     } catch (error) {
-      // Removido: localStorage.setItem('useMockData', 'true');
+      console.warn('⚠️ Erro ao buscar tarefas, usando dados mockados');
       return {
         tarefas: mockTarefas,
         total: mockTarefas.length,
@@ -330,8 +478,13 @@ export const taskAPI = {
   },
 
   getStats: async (): Promise<any> => {
-    const response = await api.get('/api/tasks/stats/dashboard');
-    return response.data;
+    try {
+      const response = await api.get('/api/tasks/stats/dashboard');
+      return response.data;
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar estatísticas de tarefas');
+      throw error;
+    }
   }
 };
 
@@ -408,7 +561,7 @@ export const generalAPI = {
         team: teamStats
       };
     } catch (error) {
-      console.error('Erro ao carregar estatísticas do dashboard:', error);
+      console.error('❌ Erro ao carregar estatísticas do dashboard:', error);
       return {
         processes: {},
         tasks: {},
@@ -419,3 +572,4 @@ export const generalAPI = {
 };
 
 export default api;
+
