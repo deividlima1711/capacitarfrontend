@@ -71,9 +71,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         return;
       }
       // Decodifica o JWT de forma segura
-      let decoded: any = null;
+      type JwtPayload = { exp?: number; [key: string]: any };
+      let decoded: JwtPayload | null = null;
       try {
-        decoded = jwtDecode(token);
+        decoded = jwtDecode<JwtPayload>(token);
       } catch (decodeError) {
         console.error('Erro ao decodificar o token JWT:', decodeError);
         setError('Token JWT inválido recebido do servidor');
