@@ -15,7 +15,7 @@ import {
 import { User, Processo, Tarefa } from '../types';
 import { mockUsers, mockProcessos, mockTarefas, simulateApiDelay, shouldUseMockData } from '../utils/mockData';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 if (process.env.NODE_ENV === 'development') {
   console.log('API base URL:', API_URL);
