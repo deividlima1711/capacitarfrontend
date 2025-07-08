@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import jwt_decode from 'jwt-decode';
 import { authAPI } from '../services/api';
 import DemoCredentials from './DemoCredentials';
 import './Login.css';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const jwt_decode = require('jwt-decode');
 
 interface LoginProps {
   onLoginSuccess: (user: any, token: string) => void;
@@ -14,6 +13,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const usernameRef = useRef<HTMLInputElement>(null);
 
   // Função utilitária para validar formato JWT
   const isValidJWT = (token: string): boolean => {
@@ -30,6 +30,13 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     sessionStorage.removeItem('user');
   };
 
+  function getResponseData(resp: any) {
+    if (resp && typeof resp === 'object' && 'data' in resp && resp.data) {
+      return resp.data;
+    }
+    return resp;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -38,51 +45,70 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     try {
       // Login com backend real
       const response = await authAPI.login(username, password);
-      
-      if (response.token && response.user) {
-        // Valida formato do JWT
-        if (!isValidJWT(response.token)) {
-          setError('Token JWT inválido recebido do servidor');
-          clearAuthData();
-          setLoading(false);
-          return;
-        }
-        // Decodifica o JWT de forma segura
-        try {
-          const decoded = jwt_decode(response.token);
-          // Verifica expiração (se existir exp no payload)
-          if (decoded && decoded.exp && Date.now() / 1000 > decoded.exp) {
-            setError('Sessão expirada. Faça login novamente.');
-            clearAuthData();
-            setLoading(false);
-            return;
-          }
-          // Login bem-sucedido
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-          // Opcional: usar sessionStorage para mais segurança
-          // sessionStorage.setItem('token', response.token);
-          // sessionStorage.setItem('user', JSON.stringify(response.user));
-          onLoginSuccess(response.user, response.token);
-        } catch (decodeError) {
-          console.error('Erro ao decodificar o token JWT:', decodeError);
-          setError('Token JWT inválido recebido do servidor');
-          clearAuthData();
-          setLoading(false);
-          return;
-        }
-      } else {
-        setError('Resposta inválida do servidor');
+      const resData = getResponseData(response);
+      console.log('Resposta completa do backend:', response);
+      console.log('response.data:', resData);
+      // Busca o token em múltiplos campos possíveis
+      const token = resData.token || resData.access_token || '';
+      const user = resData.user || null;
+      if (!token) {
+        setError('Token não recebido do servidor.');
         clearAuthData();
+        setUsername('');
+        setPassword('');
+        setTimeout(() => usernameRef.current?.focus(), 100);
+        setLoading(false);
+        return;
       }
+      // Valida formato do JWT
+      if (!isValidJWT(token)) {
+        setError('Token JWT inválido recebido do servidor');
+        clearAuthData();
+        setUsername('');
+        setPassword('');
+        setTimeout(() => usernameRef.current?.focus(), 100);
+        setLoading(false);
+        return;
+      }
+      // Decodifica o JWT de forma segura
+      let decoded: any = null;
+      try {
+        decoded = jwt_decode(token);
+      } catch (decodeError) {
+        console.error('Erro ao decodificar o token JWT:', decodeError);
+        setError('Token JWT inválido recebido do servidor');
+        clearAuthData();
+        setUsername('');
+        setPassword('');
+        setTimeout(() => usernameRef.current?.focus(), 100);
+        setLoading(false);
+        return;
+      }
+      // Verifica expiração (se existir exp no payload)
+      if (decoded && decoded.exp && Date.now() / 1000 > decoded.exp) {
+        setError('Sessão expirada. Faça login novamente.');
+        clearAuthData();
+        setUsername('');
+        setPassword('');
+        setTimeout(() => usernameRef.current?.focus(), 100);
+        setLoading(false);
+        return;
+      }
+      // Login bem-sucedido
+      localStorage.setItem('token', token);
+      if (user) localStorage.setItem('user', JSON.stringify(user));
+      onLoginSuccess(user, token);
     } catch (err: any) {
-      console.error('Erro no login:', err.message);
+      console.error('Erro no login:', err.message, err);
       setError(
         err.response?.data?.error ||
         err.response?.data?.message ||
         'Erro ao conectar com o servidor'
       );
       clearAuthData();
+      setUsername('');
+      setPassword('');
+      setTimeout(() => usernameRef.current?.focus(), 100);
     } finally {
       setLoading(false);
     }
@@ -151,6 +177,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <input
               type="text"
               id="username"
+              ref={usernameRef}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
