@@ -188,8 +188,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Carregar dados na inicialização
   useEffect(() => {
-    loadData();
-  }, []);
+    // Só carrega dados se houver usuário autenticado e token válido
+    const token = localStorage.getItem('token');
+    if (state.user && token) {
+      loadData();
+    }
+  }, [state.user]);
 
   const calculateEstatisticas = (): Estatisticas => {
     const processosAtivos = state.processos.filter(p => p.status === 'em-andamento').length;
