@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { authAPI } from '../services/api';
 import DemoCredentials from './DemoCredentials';
 import './Login.css';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const jwt_decode = require('jwt-decode');
 
 interface LoginProps {
   onLoginSuccess: (user: any, token: string) => void;
@@ -23,6 +25,16 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       const response = await authAPI.login(username, password);
       
       if (response.token && response.user) {
+        // Decodifica o JWT de forma segura
+        try {
+          const decoded = jwt_decode(response.token);
+          console.log('Payload do JWT:', decoded);
+        } catch (decodeError) {
+          console.error('Erro ao decodificar o token JWT:', decodeError);
+          setError('Token JWT inválido recebido do servidor');
+          setLoading(false);
+          return;
+        }
         // Login bem-sucedido
         onLoginSuccess(response.user, response.token);
       } else {
