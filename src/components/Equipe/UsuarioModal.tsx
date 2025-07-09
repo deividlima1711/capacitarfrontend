@@ -16,6 +16,7 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
     nome: '',
     email: '',
     username: '',
+    password: '',
     tipoUsuario: 'Comum' as TipoUsuario,
     departamento: '',
     cargo: '',
@@ -53,6 +54,12 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       newErrors.username = 'Nome de usuário é obrigatório';
     }
 
+    if (!isEditing && !formData.password.trim()) {
+      newErrors.password = 'Senha é obrigatória';
+    } else if (!isEditing && formData.password.length < 6) {
+      newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
+    }
+
     if (!formData.tipoUsuario) {
       newErrors.tipoUsuario = 'Tipo de usuário é obrigatório';
     }
@@ -77,6 +84,7 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       cargo: formData.cargo.trim(),
       role: formData.tipoUsuario.toLowerCase(),
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nome)}&background=6366f1&color=fff`,
+      ...((!isEditing && formData.password.trim()) && { password: formData.password.trim() }),
     };
 
     if (isEditing && usuario) {
