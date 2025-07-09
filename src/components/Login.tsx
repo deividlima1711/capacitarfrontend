@@ -53,6 +53,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       console.log('📥 Resposta completa do backend:', resData);
       console.log('🔑 Token recebido:', resData.token?.substring(0, 50) + '...');
       
+      // Removido console.log de debug para produção
       // Busca o token em múltiplos campos possíveis
       const token = resData.token || resData.access_token || '';
       const user = resData.user || null;
