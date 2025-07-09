@@ -15,7 +15,7 @@ import {
 import { User, Processo, Tarefa } from '../types';
 import { mockUsers, mockProcessos, mockTarefas, simulateApiDelay, shouldUseMockData } from '../utils/mockData';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 if (process.env.NODE_ENV === 'development') {
   console.log('API base URL:', API_URL);
@@ -45,22 +45,14 @@ const isValidJWT = (token: string): boolean => {
     return false;
   }
   
-  // Verificar se cada parte é base64 válida
-  try {
-    for (const part of parts) {
-      if (!part || part.length === 0) {
-        console.warn('🔍 Token inválido: parte vazia');
-        return false;
-      }
-      // Tentar decodificar base64 (adicionar padding se necessário)
-      const padded = part + '='.repeat((4 - part.length % 4) % 4);
-      atob(padded);
-    }
-    return true;
-  } catch (error) {
-    console.warn('🔍 Token inválido: erro na decodificação base64');
+  // Verificar apenas se as partes não estão vazias
+  if (parts.some(part => !part || part.length === 0)) {
+    console.warn('🔍 Token inválido: parte vazia');
     return false;
   }
+  
+  console.log('✅ Token JWT válido');
+  return true;
 };
 
 // Função para limpar dados de autenticação
@@ -206,7 +198,9 @@ export const authAPI = {
     } catch (error: any) {
       console.error('❌ Erro no login:', error.message);
       
+      // SOLUÇÃO 4: Fallback automático para mock removido para forçar resolução de problemas reais
       // Se for erro de rede, tentar modo offline
+      /* 
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
         console.warn('🔄 Erro de conexão, tentando modo offline...');
         localStorage.setItem('useMockData', 'true');
@@ -228,6 +222,7 @@ export const authAPI = {
           };
         }
       }
+      */
       
       // Propagar erro original
       throw error;
