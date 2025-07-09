@@ -123,7 +123,7 @@ let reverseUserIdMap: Map<number, string> = new Map();
 // Função para mapear ObjectId do backend para number do frontend
 const mapBackendIdToFrontend = (backendId: string | undefined): number => {
   if (!backendId || typeof backendId !== 'string') {
-    console.warn('mapBackendIdToFrontend: backendId inválido:', backendId);
+    console.error('mapBackendIdToFrontend: backendId inválido:', backendId, new Error().stack);
     return 0; // ou outro valor padrão seguro
   }
   if (userIdMap.has(backendId)) {
