@@ -59,7 +59,8 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
       ...formData,
       dataInicio: formData.dataInicio ? new Date(formData.dataInicio).toISOString() : new Date().toISOString(),
       prazo: formData.prazo ? new Date(formData.prazo).toISOString() : new Date().toISOString(),
-      processoId: formData.processoId || undefined,
+      processoId: formData.processoId && formData.processoId.trim() !== '' ? formData.processoId : undefined,
+      responsavelId: formData.responsavelId || undefined,
     };
 
     if (tarefa) {
