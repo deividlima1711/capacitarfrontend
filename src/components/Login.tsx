@@ -43,9 +43,16 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setError('');
 
     try {
+      console.log('🔐 Iniciando login para:', username);
+      
       // Login com backend real
       const response = await authAPI.login(username, password);
       const resData = getResponseData(response);
+      
+      // DEBUG: Log detalhado da resposta
+      console.log('📥 Resposta completa do backend:', resData);
+      console.log('🔑 Token recebido:', resData.token?.substring(0, 50) + '...');
+      
       // Removido console.log de debug para produção
       // Busca o token em múltiplos campos possíveis
       const token = resData.token || resData.access_token || '';
