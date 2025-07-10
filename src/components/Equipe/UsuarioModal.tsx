@@ -30,6 +30,7 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
         nome: usuario.nome || '',
         email: usuario.email || '',
         username: usuario.username || '',
+        password: '', // Sempre vazio para edição (não mostramos senha existente)
         tipoUsuario: usuario.tipoUsuario || 'Comum',
         departamento: usuario.departamento || '',
         cargo: usuario.cargo || '',
@@ -64,18 +65,27 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       newErrors.tipoUsuario = 'Tipo de usuário é obrigatório';
     }
 
+    if (!formData.departamento.trim()) {
+      newErrors.departamento = 'Departamento é obrigatório';
+    }
+
+    if (!formData.cargo.trim()) {
+      newErrors.cargo = 'Cargo é obrigatório';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!validateForm()) {
       return;
     }
 
-    const userData = {
+    // Criar objeto base sem password
+    const baseUserData = {
       nome: formData.nome.trim(),
       email: formData.email.trim(),
       username: formData.username.trim(),
@@ -84,16 +94,24 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       cargo: formData.cargo.trim(),
       role: formData.tipoUsuario.toLowerCase(),
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nome)}&background=6366f1&color=fff`,
-      ...((!isEditing && formData.password.trim()) && { password: formData.password.trim() }),
     };
 
-    if (isEditing && usuario) {
-      updateUsuario(usuario.id, userData);
-    } else {
-      addUsuario(userData);
-    }
+    // Adicionar password apenas para criação (não edição)
+    const userData = isEditing 
+      ? baseUserData 
+      : { ...baseUserData, password: formData.password.trim() };
 
-    onClose();
+    try {
+      if (isEditing && usuario) {
+        await updateUsuario(usuario.id, userData);
+      } else {
+        await addUsuario(userData);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar usuário:', error);
+      setErrors({ submit: 'Erro ao salvar usuário. Tente novamente.' });
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -108,115 +126,115 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       <div className="modal-content">
         <div className="modal-header">
           <h2>{isEditing ? 'Editar Usuário' : 'Novo Usuário'}</h2>
-          <button className="modal-close" onClick={onClose}>
-            ×
-          </button>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="nome">Nome Completo *</label>
-              <input
-                type="text"
-                id="nome"
-                value={formData.nome}
-                onChange={(e) => handleInputChange('nome', e.target.value)}
-                className={errors.nome ? 'error' : ''}
-                placeholder="Digite o nome completo"
-              />
-              {errors.nome && <span className="error-message">{errors.nome}</span>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Email *</label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className={errors.email ? 'error' : ''}
-                placeholder="Digite o email"
-              />
-              {errors.email && <span className="error-message">{errors.email}</span>}
-            </div>
+          <div className="form-group">
+            <label htmlFor="nome">Nome *</label>
+            <input
+              type="text"
+              id="nome"
+              value={formData.nome}
+              onChange={(e) => handleInputChange('nome', e.target.value)}
+              className={errors.nome ? 'error' : ''}
+              placeholder="Nome completo"
+            />
+            {errors.nome && <span className="error-message">{errors.nome}</span>}
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="username">Nome de Usuário *</label>
-              <input
-                type="text"
-                id="username"
-                value={formData.username}
-                onChange={(e) => handleInputChange('username', e.target.value)}
-                className={errors.username ? 'error' : ''}
-                placeholder="Digite o nome de usuário"
-              />
-              {errors.username && <span className="error-message">{errors.username}</span>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="tipoUsuario">Tipo de Usuário *</label>
-              <select
-                id="tipoUsuario"
-                value={formData.tipoUsuario}
-                onChange={(e) => handleInputChange('tipoUsuario', e.target.value)}
-                className={errors.tipoUsuario ? 'error' : ''}
-              >
-                <option value="Comum">Comum</option>
-                <option value="Financeiro">Financeiro</option>
-                <option value="Gestor">Gestor</option>
-              </select>
-              {errors.tipoUsuario && <span className="error-message">{errors.tipoUsuario}</span>}
-            </div>
+          <div className="form-group">
+            <label htmlFor="email">Email *</label>
+            <input
+              type="email"
+              id="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={errors.email ? 'error' : ''}
+              placeholder="email@exemplo.com"
+            />
+            {errors.email && <span className="error-message">{errors.email}</span>}
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="departamento">Departamento</label>
-              <input
-                type="text"
-                id="departamento"
-                value={formData.departamento}
-                onChange={(e) => handleInputChange('departamento', e.target.value)}
-                placeholder="Ex: TI, RH, Vendas"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="cargo">Cargo</label>
-              <input
-                type="text"
-                id="cargo"
-                value={formData.cargo}
-                onChange={(e) => handleInputChange('cargo', e.target.value)}
-                placeholder="Ex: Desenvolvedor, Analista"
-              />
-            </div>
+          <div className="form-group">
+            <label htmlFor="username">Nome de Usuário *</label>
+            <input
+              type="text"
+              id="username"
+              value={formData.username}
+              onChange={(e) => handleInputChange('username', e.target.value)}
+              className={errors.username ? 'error' : ''}
+              placeholder="nome.usuario"
+            />
+            {errors.username && <span className="error-message">{errors.username}</span>}
           </div>
 
-          <div className="tipo-usuario-info">
-            <h4>Permissões por Tipo de Usuário:</h4>
-            <div className="permissoes-grid">
-              <div className="permissao-item">
-                <strong>Gestor:</strong> Acesso total a todas as funcionalidades
-              </div>
-              <div className="permissao-item">
-                <strong>Financeiro:</strong> Visualiza dados financeiros e gerencia suas tarefas
-              </div>
-              <div className="permissao-item">
-                <strong>Comum:</strong> Visualiza e gerencia apenas suas próprias tarefas
-              </div>
+          {!isEditing && (
+            <div className="form-group">
+              <label htmlFor="password">Senha *</label>
+              <input
+                type="password"
+                id="password"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                className={errors.password ? 'error' : ''}
+                placeholder="Mínimo 6 caracteres"
+              />
+              {errors.password && <span className="error-message">{errors.password}</span>}
             </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="tipoUsuario">Tipo de Usuário *</label>
+            <select
+              id="tipoUsuario"
+              value={formData.tipoUsuario}
+              onChange={(e) => handleInputChange('tipoUsuario', e.target.value as TipoUsuario)}
+              className={errors.tipoUsuario ? 'error' : ''}
+            >
+              <option value="Comum">Comum</option>
+              <option value="Gestor">Gestor</option>
+              <option value="Financeiro">Financeiro</option>
+            </select>
+            {errors.tipoUsuario && <span className="error-message">{errors.tipoUsuario}</span>}
           </div>
+
+          <div className="form-group">
+            <label htmlFor="departamento">Departamento *</label>
+            <input
+              type="text"
+              id="departamento"
+              value={formData.departamento}
+              onChange={(e) => handleInputChange('departamento', e.target.value)}
+              className={errors.departamento ? 'error' : ''}
+              placeholder="Ex: TI, RH, Financeiro"
+            />
+            {errors.departamento && <span className="error-message">{errors.departamento}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="cargo">Cargo *</label>
+            <input
+              type="text"
+              id="cargo"
+              value={formData.cargo}
+              onChange={(e) => handleInputChange('cargo', e.target.value)}
+              className={errors.cargo ? 'error' : ''}
+              placeholder="Ex: Desenvolvedor, Analista"
+            />
+            {errors.cargo && <span className="error-message">{errors.cargo}</span>}
+          </div>
+
+          {errors.submit && (
+            <div className="error-message submit-error">{errors.submit}</div>
+          )}
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary">
-              {isEditing ? 'Atualizar Usuário' : 'Criar Usuário'}
+            <button type="submit" className="btn-primary">
+              {isEditing ? 'Atualizar' : 'Criar'} Usuário
             </button>
           </div>
         </form>
