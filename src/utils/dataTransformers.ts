@@ -126,6 +126,10 @@ const mapBackendIdToFrontend = (backendId: string): number => {
     return userIdMap.get(backendId)!;
   }
   
+  if (!backendId || typeof backendId !== 'string' || backendId.length < 8) {
+    // Valor inválido, retorna 0 ou outro valor padrão seguro
+    return 0;
+  }
   // Gerar ID numérico baseado no hash do ObjectId
   const numericId = parseInt(backendId.slice(-8), 16) % 1000000;
   userIdMap.set(backendId, numericId);
