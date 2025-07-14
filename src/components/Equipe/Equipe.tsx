@@ -5,7 +5,6 @@ import { User } from '../../types';
 import UsuarioModal from './UsuarioModal';
 import UsuarioList from './UsuarioList';
 import DebugUserPayload from './DebugUserPayload';
-import { userAPI } from '../../services/api';
 import './Equipe.css';
 
 const Equipe: React.FC = () => {
