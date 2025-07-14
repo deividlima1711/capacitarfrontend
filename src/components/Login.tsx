@@ -199,25 +199,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         >
           Sistema de Gestão de Processos
         </p>
-        
-        {/* Aviso sobre usuários reais apenas */}
-        <div style={{
-          background: '#e3f2fd',
-          border: '1px solid #2196f3',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 20,
-          textAlign: 'center'
-        }}>
-          <p style={{
-            margin: 0,
-            fontSize: '0.9em',
-            color: '#1976d2',
-            fontWeight: 500
-          }}>
-            🔒 Este sistema utiliza apenas usuários cadastrados no backend
-          </p>
-        </div>
         <form onSubmit={handleSubmit} className="login-form" style={{ width: '100%' }}>
           <div className="form-group" style={{ marginBottom: 18 }}>
             <label htmlFor="username" style={{ display: 'block', marginBottom: 6, color: '#333', fontWeight: 500 }}>Usuário:</label>
