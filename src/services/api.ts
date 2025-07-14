@@ -13,7 +13,7 @@ import {
   BackendTask
 } from '../utils/dataTransformers';
 import { User, Processo, Tarefa } from '../types';
-import { mockUsers, mockProcessos, mockTarefas, simulateApiDelay, shouldUseMockData } from '../utils/mockData';
+// Mock data imports REMOVIDOS - sistema usa APENAS backend real
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -60,7 +60,10 @@ const clearAuthData = () => {
   console.log('🧹 Limpando dados de autenticação');
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  // Garantir limpeza de qualquer modo mock que ainda possa existir
   localStorage.removeItem('useMockData');
+  localStorage.removeItem('useLocalData');
+  localStorage.removeItem('offlineMode');
 };
 
 // Interceptor para adicionar token automaticamente
@@ -112,11 +115,9 @@ api.interceptors.response.use(
     } else if (error.response?.status === 401) {
       console.warn('⚠️ Token inválido ou expirado');
       clearAuthData();
-      if (!shouldUseMockData()) {
-        // Evitar loop infinito de redirecionamento
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+      // SEMPRE redirecionar para login se token inválido (sem mock)
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
       }
     } else if (error.response?.status === 500) {
       console.error('❌ Erro interno do servidor');
@@ -138,42 +139,22 @@ export const authAPI = {
       throw new Error('Usuário e senha são obrigatórios');
     }
     
-    if (shouldUseMockData()) {
-      await simulateApiDelay(1000);
-      console.log('🔄 Usando autenticação mockada');
-      if (
-        (username === 'admin' && password === 'Lima12345') ||
-        (username === 'usuario1' && password === '123456') ||
-        (username === 'usuario2' && password === '123456')
-      ) {
-        const user = mockUsers.find(u => u.username === username);
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
-        // Armazenar dados mockados
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        return {
-          token: mockToken,
-          user: user as User
-        };
-      } else {
-        throw new Error('Credenciais inválidas');
-      }
-    }
-    
     try {
-      console.log(`🔐 Tentando login para usuário: ${username}`);
+      console.log(`🔐 Tentando login no backend para usuário: ${username}`);
+      console.log(`🌐 URL do backend: ${API_URL}`);
+      
       const response = await api.post<{ token: string; user: BackendUser }>('/auth/login', { 
         username: username.trim(), 
         password 
       });
       
+      console.log(`📥 Resposta do backend recebida:`, response.status);
+      
       const { token, user } = response.data;
       
       // Validar resposta
       if (!token || !user) {
-        throw new Error('Resposta inválida do servidor');
+        throw new Error('Resposta inválida do servidor - token ou usuário ausente');
       }
       
       // Validar token recebido
@@ -183,12 +164,12 @@ export const authAPI = {
       
       const transformedUser = transformBackendUserToFrontend(user);
       
-      // Armazenar dados
+      // Limpar qualquer dados de mock antes de armazenar dados reais
+      localStorage.removeItem('useMockData');
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(transformedUser));
-      localStorage.removeItem('useMockData'); // Remover flag de mock se existir
       
-      console.log(`✅ Login realizado com sucesso para ${username}`);
+      console.log(`✅ Login realizado com sucesso para ${username}:`, transformedUser);
       
       return {
         token,
@@ -196,36 +177,17 @@ export const authAPI = {
       };
       
     } catch (error: any) {
-      console.error('❌ Erro no login:', error.message);
+      console.error('❌ Erro no login backend:', error);
+      console.error('❌ Detalhes do erro:', error.response?.data);
+      console.error('❌ Status do erro:', error.response?.status);
       
-      // SOLUÇÃO 4: Fallback automático para mock removido para forçar resolução de problemas reais
-      // Se for erro de rede, tentar modo offline
-      /* 
-      if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
-        console.warn('🔄 Erro de conexão, tentando modo offline...');
-        localStorage.setItem('useMockData', 'true');
-        
-        if (
-          (username === 'admin' && password === 'Lima12345') ||
-          (username === 'usuario1' && password === '123456') ||
-          (username === 'usuario2' && password === '123456')
-        ) {
-          const user = mockUsers.find(u => u.username === username);
-          const mockToken = 'mock-jwt-token-' + Date.now();
-          
-          localStorage.setItem('token', mockToken);
-          localStorage.setItem('user', JSON.stringify(user));
-          
-          return {
-            token: mockToken,
-            user: user as User
-          };
-        }
-      }
-      */
-      
-      // Propagar erro original
-      throw error;
+      // NÃO usar fallback para dados mockados - sempre falhar se backend falhar
+      throw new Error(
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        error.message || 
+        'Erro ao conectar com o servidor'
+      );
     }
   },
 
@@ -283,19 +245,11 @@ export const authAPI = {
 // Serviços de Usuários
 export const userAPI = {
   getAll: async (): Promise<User[]> => {
-    if (shouldUseMockData()) {
-      await simulateApiDelay(500);
-      return mockUsers;
-    }
-    try {
-      const response = await api.get<{ users: BackendUser[] }>('/users');
-      const backendUsers: BackendUser[] = response.data.users || [];
-      initializeUserMapping(backendUsers);
-      return backendUsers.map(transformBackendUserToFrontend);
-    } catch (error) {
-      console.warn('⚠️ Erro ao buscar usuários, usando dados mockados');
-      return mockUsers;
-    }
+    // SEMPRE usar backend real - sem fallback para mock
+    const response = await api.get<{ users: BackendUser[] }>('/users');
+    const backendUsers: BackendUser[] = response.data.users || [];
+    initializeUserMapping(backendUsers);
+    return backendUsers.map(transformBackendUserToFrontend);
   },
 
   getById: async (id: number): Promise<User> => {
@@ -374,33 +328,15 @@ export const processAPI = {
     process?: string;
     search?: string;
   }): Promise<{ processos: Processo[]; total: number; totalPages: number; currentPage: number }> => {
-    if (shouldUseMockData()) {
-      await simulateApiDelay(500);
-      return {
-        processos: mockProcessos,
-        total: mockProcessos.length,
-        totalPages: 1,
-        currentPage: 1
-      };
-    }
-    try {
-      const response = await api.get<{ processes: BackendProcess[]; total: number; totalPages: number; currentPage: number }>('/processes', { params });
-      const backendProcesses: BackendProcess[] = response.data.processes || [];
-      return {
-        processos: backendProcesses.map(transformBackendProcessToFrontend),
-        total: response.data.total || backendProcesses.length,
-        totalPages: response.data.totalPages || 1,
-        currentPage: response.data.currentPage || 1
-      };
-    } catch (error) {
-      console.warn('⚠️ Erro ao buscar processos, usando dados mockados');
-      return {
-        processos: mockProcessos,
-        total: mockProcessos.length,
-        totalPages: 1,
-        currentPage: 1
-      };
-    }
+    // SEMPRE usar backend real - sem fallback para mock
+    const response = await api.get<{ processes: BackendProcess[]; total: number; totalPages: number; currentPage: number }>('/processes', { params });
+    const backendProcesses: BackendProcess[] = response.data.processes || [];
+    return {
+      processos: backendProcesses.map(transformBackendProcessToFrontend),
+      total: response.data.total || backendProcesses.length,
+      totalPages: response.data.totalPages || 1,
+      currentPage: response.data.currentPage || 1
+    };
   },
 
   getById: async (id: string): Promise<Processo> => {
@@ -450,33 +386,15 @@ export const taskAPI = {
     process?: string;
     search?: string;
   }): Promise<{ tarefas: Tarefa[]; total: number; totalPages: number; currentPage: number }> => {
-    if (shouldUseMockData()) {
-      await simulateApiDelay(500);
-      return {
-        tarefas: mockTarefas,
-        total: mockTarefas.length,
-        totalPages: 1,
-        currentPage: 1
-      };
-    }
-    try {
-      const response = await api.get<{ tasks: BackendTask[]; total: number; totalPages: number; currentPage: number }>('/tasks', { params });
-      const backendTasks: BackendTask[] = response.data.tasks || [];
-      return {
-        tarefas: backendTasks.map(transformBackendTaskToFrontend),
-        total: response.data.total || backendTasks.length,
-        totalPages: response.data.totalPages || 1,
-        currentPage: response.data.currentPage || 1
-      };
-    } catch (error) {
-      console.warn('⚠️ Erro ao buscar tarefas, usando dados mockados');
-      return {
-        tarefas: mockTarefas,
-        total: mockTarefas.length,
-        totalPages: 1,
-        currentPage: 1
-      };
-    }
+    // SEMPRE usar backend real - sem fallback para mock
+    const response = await api.get<{ tasks: BackendTask[]; total: number; totalPages: number; currentPage: number }>('/tasks', { params });
+    const backendTasks: BackendTask[] = response.data.tasks || [];
+    return {
+      tarefas: backendTasks.map(transformBackendTaskToFrontend),
+      total: response.data.total || backendTasks.length,
+      totalPages: response.data.totalPages || 1,
+      currentPage: response.data.currentPage || 1
+    };
   },
 
   getById: async (id: string): Promise<Tarefa> => {
