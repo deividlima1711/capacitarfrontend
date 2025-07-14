@@ -105,7 +105,8 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
           username: formData.username.trim(),
           nome: formData.nome.trim(),
           email: formData.email.trim(),
-          role: 'user', // Valor padrão para o tipo User
+          role: formData.tipoUsuario === 'Gestor' ? 'admin' : 
+                formData.tipoUsuario === 'Financeiro' ? 'manager' : 'user',
           tipoUsuario: formData.tipoUsuario,
           departamento: formData.departamento.trim() || undefined,
           cargo: formData.cargo.trim() || undefined,
@@ -142,8 +143,8 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       <div className="modal-content">
         <div className="modal-header">
           <h2>{isEditing ? 'Editar Usuário' : 'Novo Usuário'}</h2>
-          <button className="modal-close" onClick={onClose}>
-            ×
+          <button className="btn-fechar" onClick={onClose}>
+            &times;
           </button>
         </div>
 
