@@ -7,7 +7,7 @@ import UsuarioList from './UsuarioList';
 import './Equipe.css';
 
 const Equipe: React.FC = () => {
-  const { usuarios, deleteUsuario } = useApp();
+  const { usuarios, deleteUsuario, refreshData, loading } = useApp();
   const { canAccess, canCreate, canEdit, canDelete } = usePermissions();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<User | null>(null);
@@ -56,18 +56,43 @@ const Equipe: React.FC = () => {
     setEditingUsuario(null);
   };
 
+  const handleRefreshData = async () => {
+    console.log('🔄 Forçando atualização dos dados...');
+    await refreshData();
+  };
+
   // Função de debug removida - sistema usa APENAS usuários reais do backend
 
   return (
     <div className="equipe">
       <div className="equipe-header">
         <h1 className="equipe-title">Gerenciamento de Equipe</h1>
-        {canCreate('equipe') && (
-          <button className="btn btn-primary" onClick={handleNewUsuario}>
-            <span className="material-icons">person_add</span>
-            Novo Usuário
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleRefreshData}
+            disabled={loading}
+            style={{ 
+              backgroundColor: '#6c757d', 
+              color: 'white', 
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <span className="material-icons" style={{ fontSize: '18px', marginRight: '5px' }}>
+              refresh
+            </span>
+            {loading ? 'Carregando...' : 'Atualizar'}
           </button>
-        )}
+          {canCreate('equipe') && (
+            <button className="btn btn-primary" onClick={handleNewUsuario}>
+              <span className="material-icons">person_add</span>
+              Novo Usuário
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="equipe-stats">
@@ -110,6 +135,32 @@ const Equipe: React.FC = () => {
       </div>
 
       {/* Debug removido - sistema usa APENAS usuários reais do backend */}
+      
+      {/* Informação temporária de debug */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ 
+          background: '#f0f8ff', 
+          border: '1px solid #0066cc', 
+          padding: '10px', 
+          margin: '10px 0',
+          borderRadius: '4px',
+          fontSize: '14px'
+        }}>
+          <strong>Debug Info:</strong> {usuarios.length} usuários carregados | 
+          Loading: {loading ? 'Sim' : 'Não'} | 
+          Token: {localStorage.getItem('token') ? 'Presente' : 'Ausente'}
+          <br />
+          <button 
+            onClick={() => {
+              console.log('🔍 Estado atual dos usuários:', usuarios);
+              console.log('🔍 Token:', localStorage.getItem('token')?.substring(0, 30) + '...');
+            }}
+            style={{ marginTop: '5px', padding: '4px 8px', fontSize: '12px' }}
+          >
+            Log Debug
+          </button>
+        </div>
+      )}
 
       <UsuarioList
         usuarios={usuarios}
