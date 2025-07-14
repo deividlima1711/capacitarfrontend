@@ -112,7 +112,8 @@ const Tarefas: React.FC = () => {
       {/* Modal */}
       {modalOpen && (
         <TarefaModal
-          tarefa={editingTarefa}
+          isOpen={modalOpen}
+          tarefa={editingTarefa ?? undefined}
           onClose={handleCloseModal}
         />
       )}
