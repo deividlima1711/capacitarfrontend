@@ -1,32 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Tarefa } from '../../types';
 import { useApp } from '../../contexts/AppContext';
-import './Modal.css';
-import MultiUserSelect from './MultiUserSelect';
+import { Tarefa, Processo, User } from '../../types';
 
 interface TarefaModalProps {
-  tarefa?: Tarefa | null;
+  isOpen: boolean;
   onClose: () => void;
+  tarefa?: Tarefa;
 }
 
-const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
-  const { addTarefa, updateTarefa, usuarios, processos } = useApp();
+const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) => {
+  const { addTarefa, updateTarefa, processos, usuarios } = useApp();
+
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
-    status: 'pendente' as 'pendente' | 'em-andamento' | 'concluido' | 'atrasado',
-    prioridade: 'media' as 'baixa' | 'media' | 'alta' | 'critica',
-    responsavelId: 0,
-    processoId: '',
+    status: 'pendente',
     dataInicio: '',
     prazo: '',
-    progresso: 0,
-    estimativaHoras: 0,
-    horasGastas: 0,
-    tags: [] as string[],
+    processoId: '',
+    responsavelId: '',
   });
-  const [multiUsers, setMultiUsers] = useState<number[]>([]);
-  const [anexos, setAnexos] = useState<File[]>([]);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (tarefa) {
@@ -34,77 +29,124 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
         titulo: tarefa.titulo,
         descricao: tarefa.descricao,
         status: tarefa.status,
-        prioridade: tarefa.prioridade,
-        responsavelId: tarefa.responsavelId,
-        processoId: tarefa.processoId || '',
-        dataInicio: tarefa.dataInicio ? tarefa.dataInicio.split('T')[0] : '',
-        prazo: tarefa.prazo ? tarefa.prazo.split('T')[0] : '',
-        progresso: tarefa.progresso,
-        estimativaHoras: tarefa.estimativaHoras || 0,
-        horasGastas: tarefa.horasGastas || 0,
-        tags: tarefa.tags || [],
+        dataInicio: tarefa.dataInicio,
+        prazo: tarefa.prazo,
+        processoId: tarefa.processoId?.toString() || '',
+        responsavelId: tarefa.responsavelId?.toString() || '',
+      });
+    } else {
+      setFormData({
+        titulo: '',
+        descricao: '',
+        status: 'pendente',
+        dataInicio: '',
+        prazo: '',
+        processoId: '',
+        responsavelId: '',
       });
     }
-  }, [tarefa]);
+    setErrors({});
+  }, [tarefa, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.titulo.trim()) {
+      newErrors.titulo = 'Título é obrigatório';
+    }
+
+    if (!formData.descricao.trim()) {
+      newErrors.descricao = 'Descrição é obrigatória';
+    }
+
+    if (!formData.dataInicio) {
+      newErrors.dataInicio = 'Data de início é obrigatória';
+    }
+
+    if (!formData.prazo) {
+      newErrors.prazo = 'Prazo é obrigatório';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.titulo.trim() || !formData.responsavelId || !formData.prazo) {
-      alert('Preencha todos os campos obrigatórios!');
+
+    if (!validateForm()) {
       return;
     }
 
-    const tarefaData = {
-      ...formData,
-      dataInicio: formData.dataInicio ? new Date(formData.dataInicio).toISOString() : new Date().toISOString(),
-      prazo: formData.prazo ? new Date(formData.prazo).toISOString() : new Date().toISOString(),
-      processoId: formData.processoId || undefined,
-    };
+    try {
+      // Construir objeto com tipos corretos, filtrando campos undefined
+      const tarefaData: Partial<Tarefa> = {
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        status: formData.status as Tarefa['status'],
+        dataInicio: formData.dataInicio,
+        prazo: formData.prazo,
+      };
 
-    if (tarefa) {
-      updateTarefa(tarefa.id, tarefaData);
-    } else {
-      addTarefa(tarefaData);
+      // Adicionar processoId apenas se não estiver vazio e for número válido
+      if (formData.processoId && formData.processoId.trim() !== '') {
+        const processoIdNum = formData.processoId;
+        tarefaData.processoId = processoIdNum;
+      }
+
+      // Adicionar responsavelId apenas se não estiver vazio e for número válido
+      if (formData.responsavelId && formData.responsavelId.trim() !== '') {
+        const responsavelIdNum = parseInt(formData.responsavelId);
+        if (!isNaN(responsavelIdNum)) {
+          tarefaData.responsavelId = responsavelIdNum;
+        }
+      }
+
+      // Remove campos undefined explicitamente
+      Object.keys(tarefaData).forEach(
+        key => tarefaData[key as keyof typeof tarefaData] === undefined && delete tarefaData[key as keyof typeof tarefaData]
+      );
+
+      if (tarefa) {
+        await updateTarefa(tarefa.id, tarefaData);
+      } else {
+        await addTarefa(tarefaData as Omit<Tarefa, 'id' | 'criadoEm' | 'atualizadoEm'>);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar tarefa:', error);
+      setErrors({ submit: 'Erro ao salvar tarefa. Tente novamente.' });
     }
-
-    onClose();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'responsavelId' || name === 'progresso' || name === 'estimativaHoras' || name === 'horasGastas' 
-        ? parseInt(value) || 0 
-        : value,
+      [name]: value
     }));
-  };
 
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-    setFormData(prev => ({ ...prev, tags }));
-  };
-
-  const handleMultiUsersChange = (ids: number[]) => setMultiUsers(ids);
-
-  const handleAnexosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setAnexos(Array.from(e.target.files));
+    // Limpar erro do campo quando usuário começar a digitar
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="modal active">
-      <div className="modal-content">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{tarefa ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
-          <button className="btn-fechar" onClick={onClose}>
-            &times;
-          </button>
+          <button className="close-button" onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label htmlFor="titulo">Título *</label>
             <input
@@ -113,24 +155,29 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
               name="titulo"
               value={formData.titulo}
               onChange={handleChange}
-              required
+              placeholder="Digite o título da tarefa"
+              className={errors.titulo ? 'error' : ''}
             />
+            {errors.titulo && <span className="error-message">{errors.titulo}</span>}
           </div>
 
           <div className="form-group">
-            <label htmlFor="descricao">Descrição</label>
+            <label htmlFor="descricao">Descrição *</label>
             <textarea
               id="descricao"
               name="descricao"
               value={formData.descricao}
               onChange={handleChange}
+              placeholder="Descreva a tarefa"
               rows={3}
+              className={errors.descricao ? 'error' : ''}
             />
+            {errors.descricao && <span className="error-message">{errors.descricao}</span>}
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="status">Status</label>
+              <label htmlFor="status">Status *</label>
               <select
                 id="status"
                 name="status"
@@ -143,77 +190,20 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
                 <option value="atrasado">Atrasado</option>
               </select>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="prioridade">Prioridade</label>
-              <select
-                id="prioridade"
-                name="prioridade"
-                value={formData.prioridade}
-                onChange={handleChange}
-              >
-                <option value="baixa">Baixa</option>
-                <option value="media">Média</option>
-                <option value="alta">Alta</option>
-                <option value="critica">Crítica</option>
-              </select>
-            </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="responsavelId">Responsável *</label>
-              <select
-                id="responsavelId"
-                name="responsavelId"
-                value={formData.responsavelId}
-                onChange={handleChange}
-                required
-              >
-                <option value={0}>Selecione um responsável</option>
-                {usuarios.map(usuario => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="multiUsers">Atribuir para outros usuários</label>
-              <MultiUserSelect
-                usuarios={usuarios}
-                value={multiUsers}
-                onChange={handleMultiUsersChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="processoId">Processo (Opcional)</label>
-              <select
-                id="processoId"
-                name="processoId"
-                value={formData.processoId}
-                onChange={handleChange}
-              >
-                <option value={0}>Nenhum processo</option>
-                {processos.map(processo => (
-                  <option key={processo.id} value={processo.id}>
-                    {processo.titulo}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="dataInicio">Data de Início</label>
+              <label htmlFor="dataInicio">Data de Início *</label>
               <input
                 type="date"
                 id="dataInicio"
                 name="dataInicio"
                 value={formData.dataInicio}
                 onChange={handleChange}
+                className={errors.dataInicio ? 'error' : ''}
               />
+              {errors.dataInicio && <span className="error-message">{errors.dataInicio}</span>}
             </div>
 
             <div className="form-group">
@@ -224,92 +214,59 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
                 name="prazo"
                 value={formData.prazo}
                 onChange={handleChange}
-                required
+                className={errors.prazo ? 'error' : ''}
               />
+              {errors.prazo && <span className="error-message">{errors.prazo}</span>}
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="progresso">Progresso (%)</label>
-              <input
-                type="number"
-                id="progresso"
-                name="progresso"
-                value={formData.progresso}
+              <label htmlFor="processoId">Processo</label>
+              <select
+                id="processoId"
+                name="processoId"
+                value={formData.processoId}
                 onChange={handleChange}
-                min="0"
-                max="100"
-              />
+              >
+                <option value="">Selecione um processo (opcional)</option>
+                {processos.map((processo: Processo) => (
+                  <option key={processo.id} value={processo.id}>
+                    {processo.titulo}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="estimativaHoras">Estimativa (horas)</label>
-              <input
-                type="number"
-                id="estimativaHoras"
-                name="estimativaHoras"
-                value={formData.estimativaHoras}
+              <label htmlFor="responsavelId">Responsável</label>
+              <select
+                id="responsavelId"
+                name="responsavelId"
+                value={formData.responsavelId}
                 onChange={handleChange}
-                min="0"
-                step="0.5"
-                placeholder="Ex: 8"
-              />
+              >
+                <option value="">Selecione um responsável (opcional)</option>
+                {usuarios.map((usuario: User) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="horasGastas">Horas Gastas</label>
-            <input
-              type="number"
-              id="horasGastas"
-              name="horasGastas"
-              value={formData.horasGastas}
-              onChange={handleChange}
-              min="0"
-              step="0.5"
-              placeholder="Ex: 4.5"
-            />
-          </div>
+          {errors.submit && (
+            <div className="error-message submit-error">
+              {errors.submit}
+            </div>
+          )}
 
-          <div className="form-group">
-            <label htmlFor="tags">Tags (separadas por vírgula)</label>
-            <input
-              type="text"
-              id="tags"
-              value={formData.tags.join(', ')}
-              onChange={handleTagsChange}
-              placeholder="Ex: urgente, frontend, revisão"
-            />
-          </div>
-
-          <div className="form-group" style={{ marginTop: 16 }}>
-            <label htmlFor="anexos">Anexar Arquivo</label>
-            <label htmlFor="anexos" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f4f5f7', color: '#172b4d', border: '1px solid #dfe1e6', borderRadius: 6, padding: '8px 18px', fontWeight: 500, fontSize: 15, cursor: 'pointer', transition: 'background 0.2s', marginBottom: 8 }}>
-              <span style={{ fontSize: 20 }}>📎</span>
-              Selecionar Arquivo
-              <input
-                type="file"
-                id="anexos"
-                multiple
-                style={{ display: 'none' }}
-                onChange={handleAnexosChange}
-              />
-            </label>
-            {anexos.length > 0 && (
-              <ul style={{ margin: '8px 0 0 0', padding: 0, listStyle: 'none', fontSize: 14 }}>
-                {anexos.map((file, idx) => (
-                  <li key={idx}>{file.name}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="btn btn-outline" onClick={onClose}>
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" className="btn">
+            <button type="submit" className="btn-primary">
               {tarefa ? 'Atualizar' : 'Criar'} Tarefa
             </button>
           </div>
@@ -320,4 +277,3 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ tarefa, onClose }) => {
 };
 
 export default TarefaModal;
-
