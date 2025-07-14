@@ -71,10 +71,13 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     
-    if (token && config.headers) {
+    if (token) {
+      // Garantir que headers existe
+      config.headers = config.headers || {};
+      
       // Validar token antes de enviar
       if (isValidJWT(token)) {
-        (config.headers as any).Authorization = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${token}`;
         if (process.env.NODE_ENV === 'development') {
           console.log(`🔐 Token adicionado à requisição: ${token.substring(0, 20)}...`);
         }
@@ -261,11 +264,14 @@ export const userAPI = {
     console.log('🔍 [USER CREATION] ===== INÍCIO DA CRIAÇÃO DE USUÁRIO =====');
     console.log('🔍 [USER CREATION] Dados originais do frontend:', JSON.stringify(userData, null, 2));
     
+    // Verificar se temos token antes da requisição
+    const token = localStorage.getItem('token');
+    console.log('🔍 [USER CREATION] Token disponível:', token ? `${token.substring(0, 20)}...` : 'NENHUM');
+    
     const backendData = transformFrontendUserToBackend(userData);
     
     console.log('🔍 [USER CREATION] Payload final para o backend:', JSON.stringify(backendData, null, 2));
     console.log('🔍 [USER CREATION] URL completa:', `${api.defaults.baseURL}/users`);
-    console.log('🔍 [USER CREATION] Headers:', api.defaults.headers.common);
     
     try {
       console.log('🔍 [USER CREATION] Enviando requisição POST...');
@@ -279,7 +285,7 @@ export const userAPI = {
         console.error('❌ Status HTTP:', error.response?.status);
         console.error('❌ Mensagem de erro:', error.message);
         console.error('❌ Dados do erro do backend:', JSON.stringify(error.response?.data, null, 2));
-        console.error('❌ Headers da resposta:', error.response?.headers);
+        console.error('❌ Headers da requisição:', error.config?.headers);
         console.error('❌ URL da requisição:', error.config?.url);
         console.error('❌ Método da requisição:', error.config?.method);
         console.error('❌ Payload enviado:', error.config?.data);
