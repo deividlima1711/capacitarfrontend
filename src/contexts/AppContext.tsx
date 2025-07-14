@@ -331,10 +331,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Funções CRUD para Usuários
   const addUsuario = async (usuarioData: Omit<User, 'id' | 'criadoEm'>) => {
     try {
+      console.log('🔍 [CONTEXT] Iniciando criação de usuário:', usuarioData);
       const novoUsuario = await userAPI.create(usuarioData);
+      console.log('✅ [CONTEXT] Usuário criado com sucesso:', novoUsuario);
       dispatch({ type: 'ADD_USUARIO', payload: novoUsuario });
     } catch (error) {
-      console.error('Erro ao criar usuário:', error);
+      console.error('❌ [CONTEXT] Erro ao criar usuário:', error);
+      if (error instanceof Error) {
+        throw new Error(`Erro ao criar usuário: ${error.message}`);
+      }
       throw error;
     }
   };
