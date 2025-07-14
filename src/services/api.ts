@@ -69,38 +69,51 @@ const clearAuthData = () => {
 // Interceptor para adicionar token automaticamente - VERSÃO CORRIGIDA
 api.interceptors.request.use(
   (config) => {
-    // Tentar pegar token do localStorage E sessionStorage
+    // Pegar token do localStorage (prioridade) ou sessionStorage
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     
     // Garantir que headers existe sempre
-    config.headers = config.headers || {};
+    if (!config.headers) {
+      config.headers = {} as any;
+    }
     
     if (token && token.trim()) {
       // Validar token antes de enviar
       if (isValidJWT(token)) {
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers['Authorization'] = `Bearer ${token.trim()}`;
         if (process.env.NODE_ENV === 'development') {
           console.log(`🔐 Token adicionado à requisição: ${token.substring(0, 30)}...`);
-          console.log(`🔐 Header Authorization definido:`, config.headers.Authorization ? 'SIM' : 'NÃO');
         }
       } else {
         console.warn('⚠️ Token inválido detectado, removendo...');
         clearAuthData();
-        throw new Error('Token inválido - faça login novamente');
+        // Para endpoints protegidos, redirecionar para login
+        if (config.url && (config.url.includes('/users') || config.url.includes('/processes') || config.url.includes('/tasks'))) {
+          window.location.href = '/login';
+        }
+        return Promise.reject(new Error('Token inválido - faça login novamente'));
       }
     } else {
-      console.warn('⚠️ Nenhum token encontrado para requisição autenticada');
-      // Para endpoints que precisam de autenticação, verificar se é uma rota protegida
-      if (config.url && (config.url.includes('/users') || config.url.includes('/processes') || config.url.includes('/tasks'))) {
-        console.error('❌ Tentativa de acessar endpoint protegido sem token');
-        throw new Error('Token de autenticação necessário - faça login novamente');
+      // Verificar se é uma rota que precisa de autenticação
+      const isProtectedRoute = config.url && (
+        config.url.includes('/users') || 
+        config.url.includes('/processes') || 
+        config.url.includes('/tasks') ||
+        config.url.includes('/auth/verify') ||
+        config.url.includes('/auth/logout')
+      );
+      
+      if (isProtectedRoute && config.url && !config.url.includes('/auth/login')) {
+        console.error('❌ Tentativa de acessar endpoint protegido sem token:', config.url);
+        return Promise.reject(new Error('Token de autenticação necessário'));
       }
     }
     
     if (process.env.NODE_ENV === 'development') {
       console.log('📤 API Request:', config.method?.toUpperCase(), config.url);
-      console.log('📤 Headers enviados:', Object.keys(config.headers));
+      console.log('📤 Headers Authorization:', config.headers['Authorization'] ? 'Presente' : 'Ausente');
     }
+    
     return config;
   },
   (error) => {
