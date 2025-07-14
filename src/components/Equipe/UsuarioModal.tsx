@@ -16,12 +16,15 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
     nome: '',
     email: '',
     username: '',
+    password: '',
     tipoUsuario: 'Comum' as TipoUsuario,
     departamento: '',
     cargo: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>('');
 
   useEffect(() => {
     if (usuario) {
@@ -29,6 +32,7 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
         nome: usuario.nome || '',
         email: usuario.email || '',
         username: usuario.username || '',
+        password: '', // Não preencher senha ao editar
         tipoUsuario: usuario.tipoUsuario || 'Comum',
         departamento: usuario.departamento || '',
         cargo: usuario.cargo || '',
@@ -53,6 +57,10 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
       newErrors.username = 'Nome de usuário é obrigatório';
     }
 
+    if (!isEditing && !formData.password.trim()) {
+      newErrors.password = 'Senha é obrigatória para novos usuários';
+    }
+
     if (!formData.tipoUsuario) {
       newErrors.tipoUsuario = 'Tipo de usuário é obrigatório';
     }
@@ -61,31 +69,63 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    const userData = {
-      nome: formData.nome.trim(),
-      email: formData.email.trim(),
-      username: formData.username.trim(),
-      tipoUsuario: formData.tipoUsuario,
-      departamento: formData.departamento.trim(),
-      cargo: formData.cargo.trim(),
-      role: formData.tipoUsuario.toLowerCase(),
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nome)}&background=6366f1&color=fff`,
-    };
+    setIsSubmitting(true);
+    setSubmitError('');
 
-    if (isEditing && usuario) {
-      updateUsuario(usuario.id, userData);
-    } else {
-      addUsuario(userData);
+    try {
+      const userData = {
+        nome: formData.nome.trim(),
+        email: formData.email.trim(),
+        username: formData.username.trim(),
+        tipoUsuario: formData.tipoUsuario,
+        departamento: formData.departamento.trim(),
+        cargo: formData.cargo.trim(),
+        // Mapear tipoUsuario para role do backend
+        role: formData.tipoUsuario === 'Gestor' ? 'admin' : 
+              formData.tipoUsuario === 'Financeiro' ? 'manager' : 'user',
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nome)}&background=6366f1&color=fff`,
+        // Adicionar senha apenas se não estiver editando ou se fornecida
+        ...((!isEditing || formData.password.trim()) && { password: formData.password.trim() })
+      };
+
+      console.log('🔍 [MODAL] Dados completos antes de enviar:');
+      console.log('  - Nome:', userData.nome);
+      console.log('  - Email:', userData.email);
+      console.log('  - Username:', userData.username);
+      console.log('  - TipoUsuario:', userData.tipoUsuario);
+      console.log('  - Role:', userData.role);
+      console.log('  - Departamento:', userData.departamento);
+      console.log('  - Cargo:', userData.cargo);
+      console.log('  - Tem senha?:', !!userData.password);
+      console.log('  - Avatar:', userData.avatar);
+      console.log('  - Objeto completo:', JSON.stringify(userData, null, 2));
+
+      console.log('🔍 [MODAL] Enviando dados do usuário:', userData);
+
+      if (isEditing && usuario) {
+        await updateUsuario(usuario.id, userData);
+      } else {
+        await addUsuario(userData);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('❌ [MODAL] Erro ao salvar usuário:', error);
+      if (error instanceof Error) {
+        setSubmitError(error.message);
+      } else {
+        setSubmitError('Erro inesperado ao salvar usuário. Verifique os dados e tente novamente.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -106,6 +146,18 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
+          {submitError && (
+            <div className="error-banner" style={{
+              backgroundColor: '#fee2e2',
+              border: '1px solid #f87171',
+              color: '#991b1b',
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '20px'
+            }}>
+              {submitError}
+            </div>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="nome">Nome Completo *</label>
@@ -148,6 +200,36 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
               {errors.username && <span className="error-message">{errors.username}</span>}
             </div>
 
+            {!isEditing && (
+              <div className="form-group">
+                <label htmlFor="password">Senha *</label>
+                <input
+                  type="password"
+                  id="password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className={errors.password ? 'error' : ''}
+                  placeholder="Digite a senha"
+                />
+                {errors.password && <span className="error-message">{errors.password}</span>}
+              </div>
+            )}
+
+            {isEditing && (
+              <div className="form-group">
+                <label htmlFor="password">Nova Senha (opcional)</label>
+                <input
+                  type="password"
+                  id="password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  placeholder="Deixe em branco para manter a senha atual"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="form-row">
             <div className="form-group">
               <label htmlFor="tipoUsuario">Tipo de Usuário *</label>
               <select
@@ -162,7 +244,6 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
               </select>
               {errors.tipoUsuario && <span className="error-message">{errors.tipoUsuario}</span>}
             </div>
-          </div>
 
           <div className="form-row">
             <div className="form-group">
@@ -204,11 +285,11 @@ const UsuarioModal: React.FC<UsuarioModalProps> = ({ usuario, onClose }) => {
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button type="button" onClick={onClose} className="btn btn-secondary" disabled={isSubmitting}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary">
-              {isEditing ? 'Atualizar Usuário' : 'Criar Usuário'}
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Salvando...' : (isEditing ? 'Atualizar Usuário' : 'Criar Usuário')}
             </button>
           </div>
         </form>
