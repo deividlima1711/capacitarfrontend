@@ -134,9 +134,15 @@ export const simulateApiDelay = (ms: number = 1000): Promise<void> => {
 
 // Função para verificar se deve usar dados mockados
 export const shouldUseMockData = (): boolean => {
-  // Usar dados mockados se estiver em desenvolvimento ou se a API não estiver disponível
-  return process.env.NODE_ENV === 'development' || 
-         localStorage.getItem('useMockData') === 'true';
+  // NUNCA usar dados mockados - sempre forçar uso do backend real
+  // Apenas para debug explícito se necessário
+  const mockMode = localStorage.getItem('useMockData') === 'true';
+  
+  if (mockMode) {
+    console.warn('⚠️ MODO MOCK ATIVADO - Usando dados locais ao invés do backend');
+  }
+  
+  return false; // SEMPRE retornar false para forçar uso do backend
 };
 
 // Função para ativar/desativar modo mock
