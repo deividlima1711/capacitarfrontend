@@ -121,15 +121,15 @@ let userIdMap: Map<string, number> = new Map();
 let reverseUserIdMap: Map<number, string> = new Map();
 
 // Função para mapear ObjectId do backend para number do frontend
-const mapBackendIdToFrontend = (backendId: string | undefined): number => {
-  if (!backendId || typeof backendId !== 'string') {
-    console.error('mapBackendIdToFrontend: backendId inválido:', backendId, new Error().stack);
-    return 0; // ou outro valor padrão seguro
-  }
+const mapBackendIdToFrontend = (backendId: string): number => {
   if (userIdMap.has(backendId)) {
     return userIdMap.get(backendId)!;
   }
   
+  if (!backendId || typeof backendId !== 'string' || backendId.length < 8) {
+    // Valor inválido, retorna 0 ou outro valor padrão seguro
+    return 0;
+  }
   // Gerar ID numérico baseado no hash do ObjectId
   const numericId = parseInt(backendId.slice(-8), 16) % 1000000;
   userIdMap.set(backendId, numericId);
@@ -231,7 +231,7 @@ export const transformFrontendProcessToBackend = (frontendProcess: Partial<Proce
   const backendData: Partial<BackendProcess> = {
     title: frontendProcess.titulo,
     description: frontendProcess.descricao,
-    status: frontendProcess.status ? statusFrontendToBackend[frontendProcess.status] : undefined,
+    status: frontendProcess.status ? getProcessStatusForBackend(frontendProcess.status) : undefined,
     priority: frontendProcess.prioridade ? priorityFrontendToBackend[frontendProcess.prioridade] : undefined,
     startDate: frontendProcess.dataInicio,
     dueDate: frontendProcess.prazo,
@@ -250,6 +250,18 @@ export const transformFrontendProcessToBackend = (frontendProcess: Partial<Proce
   }
   
   return backendData;
+};
+
+// Função auxiliar para mapear status de processos corretamente
+const getProcessStatusForBackend = (frontendStatus: string): 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO' => {
+  const mapping = {
+    'pendente': 'PENDENTE',
+    'em-andamento': 'EM_ANDAMENTO',
+    'concluido': 'CONCLUIDO', // Para processos usa CONCLUIDO
+    'atrasado': 'CANCELADO'   // Para processos usa CANCELADO
+  } as const;
+  
+  return mapping[frontendStatus as keyof typeof mapping] || 'PENDENTE';
 };
 
 // Transformadores de Task
@@ -280,7 +292,7 @@ export const transformFrontendTaskToBackend = (frontendTask: Partial<Tarefa>): P
   const backendData: Partial<BackendTask> = {
     title: frontendTask.titulo,
     description: frontendTask.descricao,
-    status: frontendTask.status ? (statusFrontendToBackend[frontendTask.status] + 'A') as any : undefined, // Adiciona 'A' para tarefas
+    status: frontendTask.status ? getTaskStatusForBackend(frontendTask.status) : undefined,
     priority: frontendTask.prioridade ? priorityFrontendToBackend[frontendTask.prioridade] : undefined,
     process: frontendTask.processoId,
     startDate: frontendTask.dataInicio,
@@ -297,6 +309,18 @@ export const transformFrontendTaskToBackend = (frontendTask: Partial<Tarefa>): P
   }
   
   return backendData;
+};
+
+// Função auxiliar para mapear status de tarefas corretamente
+const getTaskStatusForBackend = (frontendStatus: string): 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDA' | 'CANCELADA' => {
+  const mapping = {
+    'pendente': 'PENDENTE',
+    'em-andamento': 'EM_ANDAMENTO',
+    'concluido': 'CONCLUIDA', // Para tarefas usa CONCLUIDA
+    'atrasado': 'CANCELADA'   // Para tarefas usa CANCELADA
+  } as const;
+  
+  return mapping[frontendStatus as keyof typeof mapping] || 'PENDENTE';
 };
 
 // Função para inicializar mapeamento de usuários
