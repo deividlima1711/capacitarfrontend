@@ -66,29 +66,40 @@ const clearAuthData = () => {
   localStorage.removeItem('offlineMode');
 };
 
-// Interceptor para adicionar token automaticamente
+// Interceptor para adicionar token automaticamente - VERSÃO CORRIGIDA
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Tentar pegar token do localStorage E sessionStorage
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     
-    if (token) {
-      // Garantir que headers existe
-      config.headers = config.headers || {};
-      
+    // Garantir que headers existe sempre
+    config.headers = config.headers || {};
+    
+    if (token && token.trim()) {
       // Validar token antes de enviar
       if (isValidJWT(token)) {
         config.headers.Authorization = `Bearer ${token}`;
         if (process.env.NODE_ENV === 'development') {
-          console.log(`🔐 Token adicionado à requisição: ${token.substring(0, 20)}...`);
+          console.log(`🔐 Token adicionado à requisição: ${token.substring(0, 30)}...`);
+          console.log(`🔐 Header Authorization definido:`, config.headers.Authorization ? 'SIM' : 'NÃO');
         }
       } else {
         console.warn('⚠️ Token inválido detectado, removendo...');
         clearAuthData();
+        throw new Error('Token inválido - faça login novamente');
+      }
+    } else {
+      console.warn('⚠️ Nenhum token encontrado para requisição autenticada');
+      // Para endpoints que precisam de autenticação, verificar se é uma rota protegida
+      if (config.url && (config.url.includes('/users') || config.url.includes('/processes') || config.url.includes('/tasks'))) {
+        console.error('❌ Tentativa de acessar endpoint protegido sem token');
+        throw new Error('Token de autenticação necessário - faça login novamente');
       }
     }
     
     if (process.env.NODE_ENV === 'development') {
       console.log('📤 API Request:', config.method?.toUpperCase(), config.url);
+      console.log('📤 Headers enviados:', Object.keys(config.headers));
     }
     return config;
   },
@@ -134,6 +145,18 @@ api.interceptors.response.use(
   }
 );
 
+// Função utilitária para verificar se o usuário está autenticado
+export const isUserAuthenticated = (): boolean => {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  return token ? isValidJWT(token) : false;
+};
+
+// Função utilitária para obter token válido
+export const getValidToken = (): string | null => {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  return (token && isValidJWT(token)) ? token : null;
+};
+
 // Serviços de Autenticação
 export const authAPI = {
   login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
@@ -169,10 +192,16 @@ export const authAPI = {
       
       // Limpar qualquer dados de mock antes de armazenar dados reais
       localStorage.removeItem('useMockData');
+      
+      // SALVAR TOKEN EM AMBOS OS STORAGES PARA GARANTIR PERSISTÊNCIA
       localStorage.setItem('token', token);
+      sessionStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(transformedUser));
+      sessionStorage.setItem('user', JSON.stringify(transformedUser));
       
       console.log(`✅ Login realizado com sucesso para ${username}:`, transformedUser);
+      console.log(`✅ Token salvo no localStorage:`, localStorage.getItem('token') ? 'SIM' : 'NÃO');
+      console.log(`✅ Token salvo no sessionStorage:`, sessionStorage.getItem('token') ? 'SIM' : 'NÃO');
       
       return {
         token,
@@ -264,9 +293,19 @@ export const userAPI = {
     console.log('🔍 [USER CREATION] ===== INÍCIO DA CRIAÇÃO DE USUÁRIO =====');
     console.log('🔍 [USER CREATION] Dados originais do frontend:', JSON.stringify(userData, null, 2));
     
-    // Verificar se temos token antes da requisição
-    const token = localStorage.getItem('token');
-    console.log('🔍 [USER CREATION] Token disponível:', token ? `${token.substring(0, 20)}...` : 'NENHUM');
+    // Verificar se temos token antes da requisição - VERIFICAÇÃO MELHORADA
+    const tokenLocal = localStorage.getItem('token');
+    const tokenSession = sessionStorage.getItem('token');
+    const token = tokenLocal || tokenSession;
+    
+    console.log('🔍 [USER CREATION] Token no localStorage:', tokenLocal ? `${tokenLocal.substring(0, 30)}...` : 'NENHUM');
+    console.log('🔍 [USER CREATION] Token no sessionStorage:', tokenSession ? `${tokenSession.substring(0, 30)}...` : 'NENHUM');
+    console.log('🔍 [USER CREATION] Token selecionado:', token ? `${token.substring(0, 30)}...` : 'NENHUM');
+    
+    if (!token) {
+      console.error('❌ [USER CREATION] ERRO CRÍTICO: Nenhum token disponível!');
+      throw new Error('Token de autenticação não encontrado - faça login novamente');
+    }
     
     const backendData = transformFrontendUserToBackend(userData);
     
@@ -285,7 +324,8 @@ export const userAPI = {
         console.error('❌ Status HTTP:', error.response?.status);
         console.error('❌ Mensagem de erro:', error.message);
         console.error('❌ Dados do erro do backend:', JSON.stringify(error.response?.data, null, 2));
-        console.error('❌ Headers da requisição:', error.config?.headers);
+        console.error('❌ Headers enviados:', error.config?.headers);
+        console.error('❌ Authorization header presente?:', error.config?.headers?.Authorization ? 'SIM' : 'NÃO');
         console.error('❌ URL da requisição:', error.config?.url);
         console.error('❌ Método da requisição:', error.config?.method);
         console.error('❌ Payload enviado:', error.config?.data);
