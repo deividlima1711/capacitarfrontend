@@ -304,9 +304,47 @@ export const userAPI = {
   },
 
   create: async (userData: Omit<User, 'id' | 'criadoEm'>): Promise<User> => {
+    console.log('🔍 [USER CREATION] ===== INÍCIO DA CRIAÇÃO DE USUÁRIO =====');
+    console.log('🔍 [USER CREATION] Dados originais do frontend:', JSON.stringify(userData, null, 2));
+    
     const backendData = transformFrontendUserToBackend(userData);
-    const response = await api.post<BackendUser>('/users', backendData);
-    return transformBackendUserToFrontend(response.data);
+    
+    console.log('🔍 [USER CREATION] Payload final para o backend:', JSON.stringify(backendData, null, 2));
+    console.log('🔍 [USER CREATION] URL completa:', `${api.defaults.baseURL}/users`);
+    console.log('🔍 [USER CREATION] Headers:', api.defaults.headers.common);
+    
+    try {
+      console.log('🔍 [USER CREATION] Enviando requisição POST...');
+      const response = await api.post<BackendUser>('/users', backendData);
+      console.log('✅ [USER CREATION] Sucesso! Status:', response.status);
+      console.log('✅ [USER CREATION] Resposta do backend:', JSON.stringify(response.data, null, 2));
+      return transformBackendUserToFrontend(response.data);
+    } catch (error) {
+      console.error('❌ [USER CREATION] ===== ERRO NA CRIAÇÃO DO USUÁRIO =====');
+      if (axios.isAxiosError(error)) {
+        console.error('❌ Status HTTP:', error.response?.status);
+        console.error('❌ Mensagem de erro:', error.message);
+        console.error('❌ Dados do erro do backend:', JSON.stringify(error.response?.data, null, 2));
+        console.error('❌ Headers da resposta:', error.response?.headers);
+        console.error('❌ URL da requisição:', error.config?.url);
+        console.error('❌ Método da requisição:', error.config?.method);
+        console.error('❌ Payload enviado:', error.config?.data);
+        
+        // Tentar extrair mensagem de erro específica do backend
+        const backendErrorMessage = error.response?.data?.message || 
+                                  error.response?.data?.error || 
+                                  error.response?.data?.details ||
+                                  'Erro desconhecido do servidor';
+        
+        console.error('❌ Mensagem específica do backend:', backendErrorMessage);
+        
+        // Lançar erro com informações mais detalhadas
+        throw new Error(`Erro ${error.response?.status}: ${backendErrorMessage}`);
+      } else {
+        console.error('❌ Erro não relacionado ao Axios:', error);
+      }
+      throw error;
+    }
   },
 
   update: async (id: number, userData: Partial<User>): Promise<User> => {
