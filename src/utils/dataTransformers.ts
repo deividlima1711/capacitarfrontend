@@ -168,18 +168,37 @@ export const transformBackendUserToFrontend = (backendUser: BackendUser): User =
 };
 
 export const transformFrontendUserToBackend = (frontendUser: Partial<User>): Partial<BackendUser> => {
+  console.log('🔍 [TRANSFORMER] Dados de entrada do frontend:', frontendUser);
+  
   const backendData: Partial<BackendUser> = {
     username: frontendUser.username,
     name: frontendUser.nome,
     email: frontendUser.email,
     role: frontendUser.role as 'admin' | 'manager' | 'user',
-    department: frontendUser.departamento
+    department: frontendUser.departamento,
+    isActive: true // Novos usuários são ativos por padrão
   };
+  
+  // Adicionar senha se fornecida (para criação ou atualização)
+  if ((frontendUser as any).password) {
+    (backendData as any).password = (frontendUser as any).password;
+  }
   
   if (frontendUser.id) {
     const backendId = mapFrontendIdToBackend(frontendUser.id);
     backendData._id = backendId;
   }
+  
+  console.log('🔍 [TRANSFORMER] Dados transformados para o backend:');
+  console.log('  - username:', backendData.username);
+  console.log('  - name:', backendData.name);
+  console.log('  - email:', backendData.email);
+  console.log('  - role:', backendData.role);
+  console.log('  - department:', backendData.department);
+  console.log('  - isActive:', backendData.isActive);
+  console.log('  - password definida?:', !!(backendData as any).password);
+  console.log('  - _id:', backendData._id);
+  console.log('  - Objeto completo:', JSON.stringify(backendData, null, 2));
   
   return backendData;
 };
