@@ -9,6 +9,8 @@ import Equipe from './components/Equipe/Equipe';
 import Relatorios from './components/Relatorios/Relatorios';
 import ModelosProcessos from './components/ModelosProcessos/ModelosProcessos';
 import OfflineNotification from './components/OfflineNotification';
+import { validateBackendConfig, enforceRealUsersOnly } from './utils/backendConfig';
+import { initializeRealUsersOnly } from './config/realUsersOnly';
 import { User } from './types';
 import './App.css';
 
@@ -25,15 +27,22 @@ const AppContent: React.FC = () => {
 
   // Verificar se há usuário logado ao inicializar
   useEffect(() => {
+    // GARANTIR que sistema use APENAS usuários reais do backend
+    initializeRealUsersOnly();
+    enforceRealUsersOnly();
+    validateBackendConfig();
+    validateBackendConfig();
+    
     const savedUser = localStorage.getItem('user');
     const savedToken = localStorage.getItem('token');
     
     if (savedUser && savedToken && !user) {
       try {
         const userData = JSON.parse(savedUser);
+        console.log('🔄 Recuperando sessão de usuário real:', userData.nome);
         setUser(userData);
       } catch (error) {
-        console.error('Erro ao recuperar dados do usuário:', error);
+        console.error('❌ Erro ao recuperar dados do usuário:', error);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       }
@@ -41,15 +50,18 @@ const AppContent: React.FC = () => {
   }, [user, setUser]);
 
   const handleLoginSuccess = (userData: User, userToken: string) => {
+    console.log('✅ Login bem-sucedido para usuário real:', userData.nome);
     setUser(userData);
     localStorage.setItem('token', userToken);
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
+    console.log('👋 Fazendo logout do usuário real');
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('useMockData'); // Garantir limpeza
     setCurrentSection('dashboard');
   };
 
