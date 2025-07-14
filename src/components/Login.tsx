@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { authAPI } from '../services/api';
-import DemoCredentials from './DemoCredentials';
 import './Login.css';
 
 interface LoginProps {
@@ -45,19 +44,20 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     try {
       console.log('🔐 Iniciando login para:', username);
       
-      // Login com backend real
+      // Login APENAS com backend real - sem fallbacks
       const response = await authAPI.login(username, password);
       const resData = getResponseData(response);
       
-      // DEBUG: Log detalhado da resposta
-      console.log('📥 Resposta completa do backend:', resData);
-      console.log('🔑 Token recebido:', resData.token?.substring(0, 50) + '...');
+      console.log('📥 Resposta do backend:', resData);
+      console.log('🔑 Token recebido:', resData.token ? 'Presente' : 'Ausente');
+      console.log('👤 Usuário recebido:', resData.user ? resData.user.nome : 'Ausente');
       
-      // Removido console.log de debug para produção
-      // Busca o token em múltiplos campos possíveis
+      // Busca o token e usuário
       const token = resData.token || resData.access_token || '';
       const user = resData.user || null;
+      
       if (!token) {
+        console.error('❌ Token não recebido do backend');
         setError('Token não recebido do servidor.');
         clearAuthData();
         setUsername('');
@@ -66,8 +66,21 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         return;
       }
+      
+      if (!user) {
+        console.error('❌ Dados do usuário não recebidos do backend');
+        setError('Dados do usuário não recebidos do servidor.');
+        clearAuthData();
+        setUsername('');
+        setPassword('');
+        setTimeout(() => usernameRef.current?.focus(), 100);
+        setLoading(false);
+        return;
+      }
+      
       // Valida formato do JWT
       if (!isValidJWT(token)) {
+        console.error('❌ Token JWT inválido recebido');
         setError('Token JWT inválido recebido do servidor');
         clearAuthData();
         setUsername('');
@@ -76,13 +89,15 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         return;
       }
+      
       // Decodifica o JWT de forma segura
       type JwtPayload = { exp?: number; [key: string]: any };
       let decoded: JwtPayload | null = null;
       try {
         decoded = jwtDecode<JwtPayload>(token);
+        console.log('🔓 Token JWT decodificado com sucesso');
       } catch (decodeError) {
-        console.error('Erro ao decodificar o token JWT:', decodeError);
+        console.error('❌ Erro ao decodificar JWT:', decodeError);
         setError('Token JWT inválido recebido do servidor');
         clearAuthData();
         setUsername('');
@@ -91,8 +106,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         return;
       }
-      // Verifica expiração (se existir exp no payload)
+      
+      // Verifica expiração
       if (decoded && decoded.exp && Date.now() / 1000 > decoded.exp) {
+        console.error('❌ Token JWT expirado');
         setError('Sessão expirada. Faça login novamente.');
         clearAuthData();
         setUsername('');
@@ -101,15 +118,27 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         return;
       }
+      
       // Login bem-sucedido
+      console.log('✅ Login validado, armazenando dados e redirecionando...');
       localStorage.setItem('token', token);
-      if (user) localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Chamar callback de sucesso
       onLoginSuccess(user, token);
+      
     } catch (err: any) {
-      console.error('Erro no login:', err.message, err);
+      console.error('❌ Erro no login:', err);
+      console.error('❌ Detalhes:', {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data
+      });
+      
       setError(
         err.response?.data?.error ||
         err.response?.data?.message ||
+        err.message ||
         'Erro ao conectar com o servidor'
       );
       clearAuthData();
@@ -121,16 +150,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const fillAdminCredentials = () => {
-    setUsername('admin');
-    setPassword('Lima12345');
-  };
-
-  const handleCredentialClick = (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setError(''); // Limpar erros anteriores
-  };
+  // Função removida: fillAdminCredentials e handleCredentialClick
+  // Sistema usa APENAS usuários reais do backend, sem credenciais demo
 
   return (
     <div className="login-container" style={{
@@ -178,6 +199,25 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         >
           Sistema de Gestão de Processos
         </p>
+        
+        {/* Aviso sobre usuários reais apenas */}
+        <div style={{
+          background: '#e3f2fd',
+          border: '1px solid #2196f3',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 20,
+          textAlign: 'center'
+        }}>
+          <p style={{
+            margin: 0,
+            fontSize: '0.9em',
+            color: '#1976d2',
+            fontWeight: 500
+          }}>
+            🔒 Este sistema utiliza apenas usuários cadastrados no backend
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="login-form" style={{ width: '100%' }}>
           <div className="form-group" style={{ marginBottom: 18 }}>
             <label htmlFor="username" style={{ display: 'block', marginBottom: 6, color: '#333', fontWeight: 500 }}>Usuário:</label>
@@ -222,7 +262,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </button>
         </form>
         
-        <DemoCredentials onCredentialClick={handleCredentialClick} />
+        {/* Componente DemoCredentials removido - sistema usa APENAS usuários reais do backend */}
       </div>
     </div>
   );
