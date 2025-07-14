@@ -4,7 +4,6 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { User } from '../../types';
 import UsuarioModal from './UsuarioModal';
 import UsuarioList from './UsuarioList';
-import DebugUserPayload from './DebugUserPayload';
 import './Equipe.css';
 
 const Equipe: React.FC = () => {
@@ -57,38 +56,7 @@ const Equipe: React.FC = () => {
     setEditingUsuario(null);
   };
 
-  const handleDebugTest = async (payload: any) => {
-    try {
-      console.log('🧪 [DEBUG] Testando payload direto:', payload);
-      
-      // Testar chamada direta para o backend
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      console.log('🧪 [DEBUG] Status da resposta:', response.status);
-      console.log('🧪 [DEBUG] Headers da resposta:', response.headers);
-      
-      const responseText = await response.text();
-      console.log('🧪 [DEBUG] Resposta completa (texto):', responseText);
-      
-      if (response.ok) {
-        console.log('✅ [DEBUG] Sucesso!');
-        alert('✅ Payload funcionou! Verifique o console para detalhes.');
-      } else {
-        console.log('❌ [DEBUG] Erro!');
-        alert(`❌ Erro ${response.status}: ${responseText}`);
-      }
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro na requisição:', error);
-      alert(`❌ Erro na requisição: ${error}`);
-    }
-  };
+  // Função de debug removida - sistema usa APENAS usuários reais do backend
 
   return (
     <div className="equipe">
@@ -141,8 +109,7 @@ const Equipe: React.FC = () => {
         </div>
       </div>
 
-      {/* Componente de Debug - TEMPORÁRIO para diagnosticar o erro 400 */}
-      <DebugUserPayload onSendTest={handleDebugTest} />
+      {/* Debug removido - sistema usa APENAS usuários reais do backend */}
 
       <UsuarioList
         usuarios={usuarios}
