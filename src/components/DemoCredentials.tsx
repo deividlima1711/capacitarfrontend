@@ -6,9 +6,8 @@ interface DemoCredentialsProps {
 }
 
 const DemoCredentials: React.FC<DemoCredentialsProps> = ({ onCredentialClick }) => {
-  const isOfflineMode = shouldUseMockData();
-
-  if (!isOfflineMode) return null;
+  // DESABILITADO: Não mostrar credenciais demo quando usar backend real
+  return null;
 
   const credentials = [
     { username: 'admin', password: 'Lima12345', role: 'Administrador' },
