@@ -141,59 +141,93 @@ function appReducer(state: AppState, action: AppAction): AppState {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Carregar dados do backend
+  // Carregar dados do backend - VERSÃO MELHORADA
   const loadData = async () => {
     try {
+      console.log('🔄 [CONTEXT] Iniciando carregamento de dados...');
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
 
-      // Carregar dados em paralelo
+      // Verificar token antes de fazer requisições
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        console.error('❌ [CONTEXT] Nenhum token encontrado para carregar dados');
+        dispatch({ type: 'SET_ERROR', payload: 'Token de autenticação não encontrado' });
+        return;
+      }
+
+      console.log('✅ [CONTEXT] Token encontrado, carregando dados...');
+
+      // Carregar dados em paralelo com tratamento individual de erros
       const [usuariosResult, processosResult, tarefasResult] = await Promise.allSettled([
         userAPI.getAll(),
-        processAPI.getAll({ limit: 100 }), // Carregar mais processos
-        taskAPI.getAll({ limit: 100 }) // Carregar mais tarefas
+        processAPI.getAll({ limit: 100 }),
+        taskAPI.getAll({ limit: 100 })
       ]);
 
       // Processar usuários
       if (usuariosResult.status === 'fulfilled') {
+        console.log('✅ [CONTEXT] Usuários carregados:', usuariosResult.value.length);
         dispatch({ type: 'SET_USUARIOS', payload: usuariosResult.value });
       } else {
-        console.error('Erro ao carregar usuários:', usuariosResult.reason);
+        console.error('❌ [CONTEXT] Erro ao carregar usuários:', usuariosResult.reason);
+        // Não falhar completamente, apenas logar o erro
       }
 
       // Processar processos
       if (processosResult.status === 'fulfilled') {
+        console.log('✅ [CONTEXT] Processos carregados:', processosResult.value.processos.length);
         dispatch({ type: 'SET_PROCESSOS', payload: processosResult.value.processos });
       } else {
-        console.error('Erro ao carregar processos:', processosResult.reason);
+        console.error('❌ [CONTEXT] Erro ao carregar processos:', processosResult.reason);
       }
 
       // Processar tarefas
       if (tarefasResult.status === 'fulfilled') {
+        console.log('✅ [CONTEXT] Tarefas carregadas:', tarefasResult.value.tarefas.length);
         dispatch({ type: 'SET_TAREFAS', payload: tarefasResult.value.tarefas });
       } else {
-        console.error('Erro ao carregar tarefas:', tarefasResult.reason);
+        console.error('❌ [CONTEXT] Erro ao carregar tarefas:', tarefasResult.reason);
       }
 
       // Atualizar estatísticas
       await updateEstatisticas();
 
+      console.log('✅ [CONTEXT] Carregamento de dados concluído');
+
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('❌ [CONTEXT] Erro geral ao carregar dados:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao carregar dados do servidor' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
-  // Carregar dados na inicialização
+  // Carregar dados na inicialização - VERSÃO CORRIGIDA
   useEffect(() => {
-    // Só carrega dados se houver usuário autenticado e token válido
-    const token = localStorage.getItem('token');
-    if (state.user && token) {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    // Se há token válido, carregar dados mesmo sem user no state
+    if (token && token.trim()) {
+      console.log('🔄 Token encontrado, carregando dados...');
+      loadData();
+    } else if (savedUser) {
+      // Se não há token mas há usuário salvo, limpar dados inconsistentes
+      console.log('⚠️ Usuário salvo sem token, limpando dados...');
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('user');
+    }
+  }, [state.user]); // Dependência mantida para recarregar quando usuário mudar
+
+  // Carregar dados imediatamente quando houver token válido
+  useEffect(() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (token && token.trim()) {
+      console.log('🔄 Efeito de carregamento automático executado');
       loadData();
     }
-  }, [state.user]);
+  }, []); // Executar apenas uma vez na inicialização
 
   const calculateEstatisticas = (): Estatisticas => {
     const processosAtivos = state.processos.filter(p => p.status === 'em-andamento').length;
