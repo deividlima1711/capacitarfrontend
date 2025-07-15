@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { Notificacao } from '../../types';
 import './NotificationPanel.css';
@@ -7,11 +6,11 @@ import './NotificationPanel.css';
 interface NotificationPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigate?: (section: string, id?: string) => void;
 }
 
-const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }) => {
+const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, onNavigate }) => {
   const { user, notificacoes, markNotificationAsRead } = useApp();
-  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -23,12 +22,15 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
     // Marcar como lida
     markNotificationAsRead(notificacao.id);
     
-    // Navegar para a tarefa específica
-    if (notificacao.tarefaId) {
-      navigate(`/tarefas/${notificacao.tarefaId}`);
+    // Navegar para a seção específica usando callback
+    if (notificacao.tarefaId && onNavigate) {
+      onNavigate('tarefas', notificacao.tarefaId);
       onClose();
-    } else if (notificacao.processoId) {
-      navigate(`/processos/${notificacao.processoId}`);
+    } else if (notificacao.processoId && onNavigate) {
+      onNavigate('processos', notificacao.processoId);
+      onClose();
+    } else {
+      // Fallback: apenas fechar o painel
       onClose();
     }
   };
