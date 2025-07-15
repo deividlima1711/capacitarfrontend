@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tarefa } from '../../types';
 import { useApp } from '../../contexts/AppContext';
+import { anexoAPI } from '../../services/api';
 
 interface TarefaResolucaoModalProps {
   tarefa: Tarefa | null;
@@ -35,7 +36,32 @@ const TarefaResolucaoModal: React.FC<TarefaResolucaoModalProps> = ({
   const [timeline, setTimeline] = useState([
     { id: 1, data: new Date().toLocaleString('pt-BR'), usuario: 'Administrador', acao: 'Tarefa criada', detalhes: tarefa?.titulo, tipo: 'criacao', icone: '🆕' }
   ]);
-  const [anexos, setAnexos] = useState<Array<{id: number, nome: string, tipo: string, tamanho: string, data: string}>>([]);
+  const [anexos, setAnexos] = useState<Array<{
+    id: string, 
+    nome: string, 
+    tipo: string, 
+    tamanho: string, 
+    data: string,
+    url?: string,
+    isUploading?: boolean
+  }>>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
+
+  // Carregar anexos existentes da tarefa (se houver)
+  useEffect(() => {
+    if (tarefa?.anexos) {
+      setAnexos(tarefa.anexos.map(anexo => ({
+        id: anexo.id || String(Date.now()),
+        nome: anexo.nome || anexo.name || 'Arquivo',
+        tipo: anexo.tipo || anexo.type || 'application/octet-stream',
+        tamanho: typeof anexo.tamanho === 'number' 
+          ? `${(anexo.tamanho / 1024).toFixed(1)} KB` 
+          : String(anexo.tamanho || anexo.size || '0 KB'),
+        data: anexo.data || anexo.uploadDate || anexo.criadoEm || new Date().toLocaleString('pt-BR'),
+        url: anexo.url
+      })));
+    }
+  }, [tarefa?.anexos]);
 
   if (!aberto || !tarefa) return null;
   const responsavel = usuarios.find(u => u.id === tarefa.responsavelId)?.nome || tarefa.responsavelId;
@@ -57,29 +83,207 @@ const TarefaResolucaoModal: React.FC<TarefaResolucaoModalProps> = ({
     }
   };
 
-  const handleAddAnexo = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddAnexo = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const novoAnexo = {
-          id: anexos.length + 1,
-          nome: file.name,
-          tipo: file.type || 'application/octet-stream',
-          tamanho: `${(file.size / 1024).toFixed(1)} KB`,
-          data: new Date().toLocaleString('pt-BR')
-        };
-        setAnexos(prev => [...prev, novoAnexo]);
-        setTimeline([
-          { id: timeline.length + 1, data: novoAnexo.data, usuario: 'Administrador', acao: 'Anexo adicionado', detalhes: file.name, tipo: 'anexo', icone: '📎' },
-          ...timeline
+    if (!files || !tarefa) return;
+
+    for (const file of Array.from(files)) {
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      
+      // Adicionar arquivo com status de upload
+      const novoAnexo = {
+        id: tempId,
+        nome: file.name,
+        tipo: file.type || 'application/octet-stream',
+        tamanho: `${(file.size / 1024).toFixed(1)} KB`,
+        data: new Date().toLocaleString('pt-BR'),
+        isUploading: true
+      };
+      
+      setAnexos(prev => [...prev, novoAnexo]);
+      setUploadingFiles(prev => new Set([...prev, tempId]));
+
+      try {
+        console.log(`📎 Fazendo upload do arquivo: ${file.name}`);
+        
+        if (!tarefa) {
+          throw new Error('Tarefa não encontrada');
+        }
+        
+        // Fazer upload via API
+        const uploadResult = await anexoAPI.upload(tarefa.id, file);
+        
+        console.log(`✅ Upload concluído:`, uploadResult);
+
+        // Atualizar o anexo com dados reais do backend
+        setAnexos(prev => prev.map(anexo => 
+          anexo.id === tempId 
+            ? { 
+                ...anexo, 
+                id: uploadResult.url, // Usar URL como ID único
+                url: uploadResult.url,
+                nome: uploadResult.name || file.name,
+                isUploading: false 
+              }
+            : anexo
+        ));
+
+        // Adicionar ao timeline
+        setTimeline(prev => [
+          { 
+            id: prev.length + 1, 
+            data: new Date().toLocaleString('pt-BR'), 
+            usuario: 'Administrador', 
+            acao: 'Anexo adicionado', 
+            detalhes: uploadResult.name || file.name, 
+            tipo: 'anexo', 
+            icone: '📎' 
+          },
+          ...prev
         ]);
-      });
+
+      } catch (error: any) {
+        console.error(`❌ Erro no upload do arquivo ${file.name}:`, error);
+        
+        // Remover anexo em caso de erro
+        setAnexos(prev => prev.filter(anexo => anexo.id !== tempId));
+        
+        // Mostrar erro para o usuário
+        alert(`Erro ao enviar arquivo ${file.name}: ${error.message || 'Erro desconhecido'}`);
+      } finally {
+        setUploadingFiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(tempId);
+          return newSet;
+        });
+      }
     }
+    
+    // Limpar input
     event.target.value = '';
   };
 
+  const handleVisualizarAnexo = async (anexo: typeof anexos[0]) => {
+    if (!anexo.url) {
+      alert('URL do arquivo não encontrada');
+      return;
+    }
+
+    try {
+      console.log(`👀 Visualizando anexo: ${anexo.nome}`);
+      
+      // Abrir em nova aba para visualização
+      window.open(anexo.url, '_blank');
+      
+    } catch (error: any) {
+      console.error(`❌ Erro ao visualizar anexo ${anexo.nome}:`, error);
+      alert(`Erro ao visualizar arquivo: ${error.message || 'Erro desconhecido'}`);
+    }
+  };
+
+  const handleBaixarAnexo = async (anexo: typeof anexos[0]) => {
+    if (!anexo.id || anexo.id.startsWith('temp-')) {
+      alert('Anexo ainda está sendo processado');
+      return;
+    }
+
+    if (!tarefa) {
+      alert('Tarefa não encontrada');
+      return;
+    }
+
+    try {
+      console.log(`💾 Baixando anexo: ${anexo.nome}`);
+      
+      // Fazer download via API
+      const blob = await anexoAPI.download(tarefa.id, anexo.id);
+      
+      // Criar link temporário para download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = anexo.nome;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpar recursos
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+      console.log(`✅ Download concluído: ${anexo.nome}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Erro no download do anexo ${anexo.nome}:`, error);
+      alert(`Erro ao baixar arquivo: ${error.message || 'Erro desconhecido'}`);
+    }
+  };
+
+  const handleRemoverAnexo = async (anexo: typeof anexos[0]) => {
+    if (anexo.isUploading) {
+      alert('Aguarde o upload terminar antes de remover');
+      return;
+    }
+
+    const confirmar = window.confirm(`Tem certeza que deseja remover o anexo "${anexo.nome}"?`);
+    if (!confirmar) return;
+
+    if (!tarefa) {
+      alert('Tarefa não encontrada');
+      return;
+    }
+
+    try {
+      console.log(`🗑️ Removendo anexo: ${anexo.nome}`);
+      
+      // Se tem ID real (não é temp), remover do backend
+      if (anexo.id && !anexo.id.startsWith('temp-')) {
+        await anexoAPI.delete(tarefa.id, anexo.id);
+      }
+      
+      // Remover da lista local
+      setAnexos(prev => prev.filter(a => a.id !== anexo.id));
+      
+      // Adicionar ao timeline
+      setTimeline(prev => [
+        { 
+          id: prev.length + 1, 
+          data: new Date().toLocaleString('pt-BR'), 
+          usuario: 'Administrador', 
+          acao: 'Anexo removido', 
+          detalhes: anexo.nome, 
+          tipo: 'anexo', 
+          icone: '🗑️' 
+        },
+        ...prev
+      ]);
+      
+      console.log(`✅ Anexo removido: ${anexo.nome}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Erro ao remover anexo ${anexo.nome}:`, error);
+      alert(`Erro ao remover arquivo: ${error.message || 'Erro desconhecido'}`);
+    }
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .anexo-item:hover {
+            background-color: #f8f9fa !important;
+            border-color: #d1ecf1 !important;
+          }
+          .anexo-item button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+        `}
+      </style>
+      <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content tarefa-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, position: 'relative' }}>
         <button
           className="modal-close"
@@ -214,23 +418,105 @@ const TarefaResolucaoModal: React.FC<TarefaResolucaoModalProps> = ({
               </label>
               {anexos.length > 0 && (
                 <div className="anexos-list" style={{marginTop: 12, textAlign: 'left'}}>
-                  <h4 style={{fontSize: 15, marginBottom: 6}}>Anexos ({anexos.length})</h4>
+                  <h4 style={{fontSize: 15, marginBottom: 8}}>Anexos ({anexos.length})</h4>
                   {anexos.map((anexo) => (
-                    <div key={anexo.id} className="anexo-item" style={{display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4}}>
-                      <span className="anexo-nome" style={{fontWeight: 500}}>{anexo.nome}</span>
-                      <small className="anexo-meta" style={{color: '#6b778c'}}>{anexo.tamanho} • {anexo.data}</small>
-                      <button
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ff5630',
-                          fontSize: 18,
-                          cursor: 'pointer',
-                          marginLeft: 4
-                        }}
-                        title="Remover anexo"
-                        onClick={() => setAnexos(anexos.filter(a => a.id !== anexo.id))}
-                      >×</button>
+                    <div key={anexo.id} className="anexo-item" style={{
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 8, 
+                      marginBottom: 8,
+                      padding: '8px 12px',
+                      background: anexo.isUploading ? '#f8f9fa' : '#ffffff',
+                      border: '1px solid #e1e5e9',
+                      borderRadius: 6,
+                      opacity: anexo.isUploading ? 0.7 : 1
+                    }}>
+                      <div style={{flex: 1, minWidth: 0}}>
+                        <div style={{
+                          fontWeight: 500, 
+                          fontSize: 14,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {anexo.isUploading ? (
+                            <span style={{color: '#6b778c'}}>📤 Enviando: {anexo.nome}</span>
+                          ) : (
+                            anexo.nome
+                          )}
+                        </div>
+                        <div style={{
+                          fontSize: 12, 
+                          color: '#6b778c',
+                          marginTop: 2
+                        }}>
+                          {anexo.tamanho} • {anexo.data}
+                        </div>
+                      </div>
+                      
+                      {!anexo.isUploading && (
+                        <div style={{display: 'flex', gap: 4}}>
+                          <button
+                            style={{
+                              background: '#e3f2fd',
+                              border: '1px solid #2196f3',
+                              color: '#1976d2',
+                              fontSize: 12,
+                              padding: '4px 8px',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 500
+                            }}
+                            title="Visualizar anexo"
+                            onClick={() => handleVisualizarAnexo(anexo)}
+                          >
+                            👁️ Ver
+                          </button>
+                          <button
+                            style={{
+                              background: '#e8f5e8',
+                              border: '1px solid #4caf50',
+                              color: '#388e3c',
+                              fontSize: 12,
+                              padding: '4px 8px',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 500
+                            }}
+                            title="Baixar anexo"
+                            onClick={() => handleBaixarAnexo(anexo)}
+                          >
+                            💾 Baixar
+                          </button>
+                          <button
+                            style={{
+                              background: '#ffebee',
+                              border: '1px solid #f44336',
+                              color: '#d32f2f',
+                              fontSize: 12,
+                              padding: '4px 8px',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 500
+                            }}
+                            title="Remover anexo"
+                            onClick={() => handleRemoverAnexo(anexo)}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      )}
+                      
+                      {anexo.isUploading && (
+                        <div style={{
+                          width: 20,
+                          height: 20,
+                          border: '2px solid #e3f2fd',
+                          borderTop: '2px solid #2196f3',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }}></div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -311,7 +597,8 @@ const TarefaResolucaoModal: React.FC<TarefaResolucaoModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
