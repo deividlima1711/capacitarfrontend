@@ -158,7 +158,7 @@ const Tarefas: React.FC = () => {
           tarefa={tarefaSelecionadaResolucao}
           aberto={tarefaResolucaoModal}
           onClose={handleCloseResolucaoModal}
-          onStatusChange={(novoStatus) => {
+          onStatusChange={(novoStatus: Tarefa['status']) => {
             // Implementar mudança de status aqui se necessário
             console.log(`Alterando status da tarefa ${tarefaSelecionadaResolucao.id} para ${novoStatus}`);
           }}
