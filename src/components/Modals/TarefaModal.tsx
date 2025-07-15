@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { Tarefa, Processo, User, Anexo } from '../../types';
-import { anexoAPI } from '../../services/api';
-import AnexoManager from '../Anexos/AnexoManager';
+import UniversalAnexoManager from '../Anexos/UniversalAnexoManagerFinal';
 import { usePermissions } from '../../hooks/usePermissions';
 
 interface TarefaModalProps {
@@ -15,7 +14,6 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
   const { addTarefa, updateTarefa, processos, usuarios } = useApp();
   const { canEdit } = usePermissions();
   const [anexos, setAnexos] = useState<Anexo[]>([]);
-  const [loadingAnexos, setLoadingAnexos] = useState(false);
 
   const [formData, setFormData] = useState({
     titulo: '',
@@ -29,6 +27,15 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Sincronizar anexos quando a tarefa muda
+  useEffect(() => {
+    if (tarefa?.anexos) {
+      setAnexos(tarefa.anexos);
+    } else {
+      setAnexos([]);
+    }
+  }, [tarefa]);
+
   useEffect(() => {
     if (tarefa) {
       setFormData({
@@ -41,8 +48,7 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
         responsavelId: tarefa.responsavelId?.toString() || '',
       });
       
-      // Carregar anexos se for edição
-      loadAnexos(tarefa.id);
+      // Carregar anexos se for edição - o UniversalAnexoManager fará isso automaticamente
     } else {
       setFormData({
         titulo: '',
@@ -57,45 +63,6 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
     }
     setErrors({});
   }, [tarefa, isOpen]);
-
-  const loadAnexos = async (tarefaId: string) => {
-    try {
-      setLoadingAnexos(true);
-      const anexosData = await anexoAPI.list(tarefaId);
-      setAnexos(anexosData);
-    } catch (error) {
-      console.error('Erro ao carregar anexos:', error);
-    } finally {
-      setLoadingAnexos(false);
-    }
-  };
-
-  const handleAddAnexo = async (file: File): Promise<void> => {
-    if (!tarefa) {
-      alert('Salve a tarefa primeiro antes de adicionar anexos.');
-      return;
-    }
-
-    try {
-      const novoAnexo = await anexoAPI.upload(tarefa.id, file);
-      setAnexos(prev => [...prev, novoAnexo]);
-    } catch (error) {
-      console.error('Erro ao adicionar anexo:', error);
-      throw error;
-    }
-  };
-
-  const handleRemoveAnexo = async (anexoId: string): Promise<void> => {
-    if (!tarefa) return;
-
-    try {
-      await anexoAPI.delete(tarefa.id, anexoId);
-      setAnexos(prev => prev.filter(a => a.id !== anexoId));
-    } catch (error) {
-      console.error('Erro ao remover anexo:', error);
-      throw error;
-    }
-  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -307,13 +274,15 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
           {/* Seção de Anexos - apenas para tarefas existentes */}
           {tarefa && (
             <div className="anexos-section">
-              <AnexoManager
+              <UniversalAnexoManager
+                entityType="tasks"
+                entityId={tarefa.id}
                 anexos={anexos}
-                tarefaId={tarefa.id}
-                canEdit={canEdit('tarefas')}
                 usuarios={usuarios}
-                onAddAnexo={handleAddAnexo}
-                onRemoveAnexo={handleRemoveAnexo}
+                canEdit={canEdit('tarefas')}
+                showPreview={true}
+                onAnexosChange={setAnexos}
+                onError={(error) => console.error('Erro no anexo:', error)}
               />
             </div>
           )}
