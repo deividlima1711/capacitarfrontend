@@ -553,90 +553,177 @@ export const fileAPI = {
   }
 };
 
-// Serviços Gerais
-export const generalAPI = {
-  getStatus: async (): Promise<any> => {
-    const response = await api.get('/');
-    return response.data;
-  },
-
-  getDashboardStats: async (): Promise<any> => {
-    try {
-      const [processStats, taskStats, teamStats] = await Promise.all([
-        processAPI.getStats(),
-        taskAPI.getStats(),
-        teamAPI.getStats()
-      ]);
-
-      return {
-        processes: processStats,
-        tasks: taskStats,
-        team: teamStats
-      };
-    } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas do dashboard:', error);
-      return {
-        processes: {},
-        tasks: {},
-        team: {}
-      };
-    }
-  }
-};
-
-// API para gerenciamento de anexos
+// 📎 API UNIFICADA PARA GERENCIAMENTO DE ANEXOS
 export const anexoAPI = {
-  upload: async (tarefaId: string, file: File): Promise<any> => {
+  /**
+   * 🆕 MÉTODO PRINCIPAL UNIFICADO - Upload de anexo
+   * Funciona para tarefas, processos e modelos
+   */
+  upload: async (entityTypeOrId: 'tasks' | 'processes' | 'models' | string, entityIdOrFile: string | File, file?: File): Promise<any> => {
+    let entityType: string, entityId: string, uploadFile: File;
+    
+    // Compatibilidade com assinatura antiga (tarefaId, file)
+    if (typeof entityTypeOrId === 'string' && !['tasks', 'processes', 'models'].includes(entityTypeOrId)) {
+      entityType = 'tasks';
+      entityId = entityTypeOrId;
+      uploadFile = entityIdOrFile as File;
+    } else {
+      entityType = entityTypeOrId as string;
+      entityId = entityIdOrFile as string;
+      uploadFile = file!;
+    }
+    
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('tarefaId', tarefaId);
+    formData.append('file', uploadFile);
+    formData.append('entityId', entityId);
+    formData.append('entityType', entityType);
     
     try {
-      const response = await api.post(`/tasks/${tarefaId}/anexos`, formData, {
+      const endpoint = `/${entityType}/${entityId}/anexos`;
+      const response = await api.post(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       
-      console.log('✅ Anexo enviado com sucesso:', response.data);
+      console.log(`✅ Anexo enviado: ${entityType}/${entityId} - ${uploadFile.name}`);
       return response.data;
-    } catch (error) {
-      console.error('❌ Erro ao enviar anexo:', error);
+    } catch (error: any) {
+      const endpoint = `/${entityType}/${entityId}/anexos`;
+      console.error(`❌ Erro no upload para ${entityType}/${entityId}:`, error);
+      
+      // Mensagens de erro mais específicas
+      if (error.response?.status === 404) {
+        throw new Error(`Endpoint não implementado: ${endpoint}`);
+      } else if (error.response?.status === 413) {
+        throw new Error('Arquivo muito grande');
+      } else if (error.response?.status === 400) {
+        throw new Error('Tipo de arquivo não permitido');
+      }
+      
       throw error;
     }
   },
 
-  download: async (tarefaId: string, anexoId: string): Promise<Blob> => {
+  /**
+   * 🆕 MÉTODO PRINCIPAL UNIFICADO - Download de anexo
+   * Funciona para tarefas, processos e modelos
+   */
+  download: async (entityTypeOrId: 'tasks' | 'processes' | 'models' | string, entityIdOrAnexoId: string, anexoId?: string): Promise<Blob> => {
+    let entityType: string, entityId: string, fileId: string;
+    
+    // Compatibilidade com assinatura antiga (tarefaId, anexoId)
+    if (typeof entityTypeOrId === 'string' && !['tasks', 'processes', 'models'].includes(entityTypeOrId)) {
+      entityType = 'tasks';
+      entityId = entityTypeOrId;
+      fileId = entityIdOrAnexoId;
+    } else {
+      entityType = entityTypeOrId as string;
+      entityId = entityIdOrAnexoId;
+      fileId = anexoId!;
+    }
+    
     try {
-      const response = await api.get(`/tasks/${tarefaId}/anexos/${anexoId}/download`, {
+      const endpoint = `/${entityType}/${entityId}/anexos/${fileId}/download`;
+      const response = await api.get(endpoint, {
         responseType: 'blob',
       });
       
+      console.log(`✅ Download realizado: ${entityType}/${entityId}/${fileId}`);
       return response.data;
-    } catch (error) {
-      console.error('❌ Erro ao baixar anexo:', error);
+    } catch (error: any) {
+      console.error(`❌ Erro no download de ${entityType}/${entityId}/${fileId}:`, error);
+      
+      if (error.response?.status === 404) {
+        throw new Error('Arquivo não encontrado');
+      }
+      
       throw error;
     }
   },
 
-  delete: async (tarefaId: string, anexoId: string): Promise<void> => {
+  /**
+   * 🆕 MÉTODO PRINCIPAL UNIFICADO - Remoção de anexo
+   * Funciona para tarefas, processos e modelos
+   */
+  delete: async (entityTypeOrId: 'tasks' | 'processes' | 'models' | string, entityIdOrAnexoId: string, anexoId?: string): Promise<void> => {
+    let entityType: string, entityId: string, fileId: string;
+    
+    // Compatibilidade com assinatura antiga (tarefaId, anexoId)
+    if (typeof entityTypeOrId === 'string' && !['tasks', 'processes', 'models'].includes(entityTypeOrId)) {
+      entityType = 'tasks';
+      entityId = entityTypeOrId;
+      fileId = entityIdOrAnexoId;
+    } else {
+      entityType = entityTypeOrId as string;
+      entityId = entityIdOrAnexoId;
+      fileId = anexoId!;
+    }
+    
     try {
-      await api.delete(`/tasks/${tarefaId}/anexos/${anexoId}`);
-      console.log('✅ Anexo removido com sucesso');
-    } catch (error) {
-      console.error('❌ Erro ao remover anexo:', error);
+      const endpoint = `/${entityType}/${entityId}/anexos/${fileId}`;
+      await api.delete(endpoint);
+      console.log(`✅ Anexo removido: ${entityType}/${entityId}/${fileId}`);
+    } catch (error: any) {
+      console.error(`❌ Erro ao remover anexo de ${entityType}/${entityId}/${fileId}:`, error);
+      
+      if (error.response?.status === 404) {
+        throw new Error('Anexo não encontrado');
+      }
+      
       throw error;
     }
   },
 
-  list: async (tarefaId: string): Promise<any[]> => {
-    try {
-      const response = await api.get(`/tasks/${tarefaId}/anexos`);
-      return response.data.anexos || [];
-    } catch (error) {
-      console.error('❌ Erro ao listar anexos:', error);
-      throw error;
+  /**
+   * 🆕 MÉTODO PRINCIPAL UNIFICADO - Listar anexos
+   * Funciona para tarefas, processos e modelos
+   */
+  list: async (entityTypeOrId: 'tasks' | 'processes' | 'models' | string, entityId?: string): Promise<any[]> => {
+    let entityType: string, id: string;
+    
+    // Compatibilidade com assinatura antiga (tarefaId)
+    if (typeof entityTypeOrId === 'string' && !['tasks', 'processes', 'models'].includes(entityTypeOrId)) {
+      entityType = 'tasks';
+      id = entityTypeOrId;
+    } else {
+      entityType = entityTypeOrId as string;
+      id = entityId!;
     }
+    
+    try {
+      const endpoint = `/${entityType}/${id}/anexos`;
+      const response = await api.get(endpoint);
+      return response.data.anexos || response.data || [];
+    } catch (error: any) {
+      const endpoint = `/${entityType}/${id}/anexos`;
+      console.error(`❌ Erro ao listar anexos de ${entityType}/${id}:`, error);
+      
+      // Em caso de erro (ex: 404), retornar array vazio para não quebrar a UI
+      if (error.response?.status === 404) {
+        console.warn(`⚠️ Endpoint não implementado: ${endpoint} - retornando lista vazia`);
+        return [];
+      }
+      
+      return [];
+    }
+  },
+
+  // 🔄 MÉTODOS DE COMPATIBILIDADE (podem ser removidos no futuro)
+  uploadUniversal: async (entityType: 'tasks' | 'processes' | 'models', entityId: string, file: File) => {
+    return anexoAPI.upload(entityType, entityId, file);
+  },
+  
+  downloadUniversal: async (entityType: 'tasks' | 'processes' | 'models', entityId: string, anexoId: string) => {
+    return anexoAPI.download(entityType, entityId, anexoId);
+  },
+  
+  deleteUniversal: async (entityType: 'tasks' | 'processes' | 'models', entityId: string, anexoId: string) => {
+    return anexoAPI.delete(entityType, entityId, anexoId);
+  },
+  
+  listUniversal: async (entityType: 'tasks' | 'processes' | 'models', entityId: string) => {
+    return anexoAPI.list(entityType, entityId);
   }
 };
 
