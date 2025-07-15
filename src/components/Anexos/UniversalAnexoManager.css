@@ -1,0 +1,442 @@
+/* 🎨 UNIVERSAL ANEXO MANAGER STYLES */
+
+.universal-anexo-manager {
+  margin-top: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.universal-anexo-manager.loading {
+  padding: 40px;
+  text-align: center;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #666;
+}
+
+.loading-spinner .material-icons {
+  font-size: 32px;
+  animation: pulse 1.5s infinite;
+}
+
+.anexo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.anexo-header h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.anexo-header h4 .material-icons {
+  font-size: 20px;
+  color: #666;
+}
+
+.btn-add-anexo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-add-anexo:hover:not(:disabled) {
+  background: #1976d2;
+  transform: translateY(-1px);
+}
+
+.btn-add-anexo:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-add-anexo .material-icons {
+  font-size: 18px;
+}
+
+/* Lista de Anexos */
+.anexo-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.no-anexos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #666;
+  background: white;
+}
+
+.no-anexos .material-icons {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 12px;
+}
+
+.no-anexos p {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.no-anexos small {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+/* Item de Anexo */
+.anexo-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.anexo-item:hover {
+  background: #f9f9f9;
+}
+
+.anexo-item:last-child {
+  border-bottom: none;
+}
+
+.anexo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.anexo-icon .material-icons {
+  font-size: 20px;
+  color: #666;
+}
+
+.anexo-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.anexo-nome {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.anexo-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.anexo-size {
+  font-weight: 500;
+}
+
+.anexo-separator {
+  color: #ccc;
+}
+
+.anexo-uploader,
+.anexo-date {
+  white-space: nowrap;
+}
+
+/* Ações dos Anexos */
+.anexo-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.anexo-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.btn-preview {
+  color: #2196f3;
+}
+
+.btn-preview:hover {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.btn-download {
+  color: #4caf50;
+}
+
+.btn-download:hover {
+  background: #e8f5e8;
+  color: #388e3c;
+}
+
+.btn-remove {
+  color: #f44336;
+}
+
+.btn-remove:hover {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.anexo-actions .material-icons {
+  font-size: 16px;
+}
+
+/* Modal de Preview */
+.preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.preview-modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.preview-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-close-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-close-preview:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.preview-modal-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: 200px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.loading-preview,
+.error-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #666;
+}
+
+.loading-preview .material-icons {
+  font-size: 32px;
+  animation: spin 1s linear infinite;
+}
+
+.error-preview .material-icons {
+  font-size: 32px;
+  color: #f44336;
+}
+
+.preview-modal-actions {
+  display: flex;
+  justify-content: center;
+  padding: 16px 20px;
+  border-top: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.btn-download-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-download-preview:hover {
+  background: #388e3c;
+}
+
+/* Informações de Upload */
+.upload-info {
+  padding: 12px 20px;
+  background: #f9f9f9;
+  border-top: 1px solid #e0e0e0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Animações */
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .anexo-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .anexo-header h4 {
+    text-align: center;
+  }
+  
+  .anexo-item {
+    padding: 12px 16px;
+  }
+  
+  .anexo-info {
+    margin-right: 8px;
+  }
+  
+  .anexo-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .anexo-separator {
+    display: none;
+  }
+  
+  .preview-modal-content {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+  
+  .preview-modal-header h3 {
+    max-width: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .anexo-actions {
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .anexo-actions button {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .anexo-actions .material-icons {
+    font-size: 14px;
+  }
+}
