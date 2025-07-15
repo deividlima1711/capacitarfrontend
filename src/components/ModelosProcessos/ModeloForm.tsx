@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ModeloProcesso, AtividadeModelo } from '../../types';
+import UniversalAnexoManager from '../Anexos/UniversalAnexoManagerFinal';
 
 interface ModeloFormProps {
   modelo: ModeloProcesso | null;
@@ -332,6 +333,23 @@ const ModeloForm: React.FC<ModeloFormProps> = ({
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Seção de Anexos */}
+        <div className="form-section">
+          <h3>Anexos do Modelo</h3>
+          <UniversalAnexoManager
+            entityType="models"
+            entityId={modelo?.id?.toString() || 'temp'}
+            canEdit={true}
+            showPreview={true}
+            maxFileSize={10 * 1024 * 1024} // 10MB
+            allowedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.zip', '.rar']}
+            onError={(error) => {
+              console.error('Erro nos anexos:', error);
+              alert(`Erro: ${error}`);
+            }}
+          />
         </div>
 
         <div className="form-actions">
