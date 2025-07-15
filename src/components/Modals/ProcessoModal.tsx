@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import Select, { MultiValue } from 'react-select';
 import { Processo, ModeloProcesso } from '../../types';
 import { useApp } from '../../contexts/AppContext';
+import UniversalAnexoManager from '../Anexos/UniversalAnexoManagerFinal';
 import './Modal.css';
 
 interface ProcessoModalProps {
@@ -404,6 +405,20 @@ const ProcessoModal: React.FC<ProcessoModalProps> = ({ processo, onClose }) => {
               placeholder="Ex: urgente, cliente-vip, revisão"
             />
           </div>
+
+          {/* Seção de Anexos - apenas para processos existentes */}
+          {processo && (
+            <div className="anexos-section">
+              <UniversalAnexoManager
+                entityType="processes"
+                entityId={processo.id}
+                usuarios={usuarios}
+                canEdit={true}
+                showPreview={true}
+                onError={(error) => console.error('Erro no anexo:', error)}
+              />
+            </div>
+          )}
 
           <div className="form-actions">
             <button type="button" className="btn btn-outline" onClick={onClose}>
