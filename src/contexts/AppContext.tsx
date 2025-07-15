@@ -342,8 +342,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateTarefa = async (id: string, updates: Partial<Tarefa>) => {
     try {
+      const tarefaAnterior = state.tarefas.find(t => t.id === id);
       await taskAPI.update(id, updates);
       dispatch({ type: 'UPDATE_TAREFA', payload: { id, updates } });
+      
+      // Criar notificação se tarefa foi atribuída a um usuário
+      if (updates.responsavelId && tarefaAnterior && updates.responsavelId !== tarefaAnterior.responsavelId) {
+        const tarefa = { ...tarefaAnterior, ...updates };
+        const responsavel = state.usuarios.find(u => u.id === updates.responsavelId);
+        
+        if (responsavel) {
+          const notificacao: Omit<Notificacao, 'id' | 'criadoEm'> = {
+            titulo: 'Nova Tarefa Atribuída',
+            mensagem: `Você foi atribuído à tarefa "${tarefa.titulo}"`,
+            tipo: 'tarefa',
+            lida: false,
+            usuarioId: responsavel.id,
+            tarefaId: id,
+            action: 'open_task'
+          };
+          
+          addNotification(notificacao);
+          console.log(`📬 Notificação criada para ${responsavel.nome} sobre tarefa "${tarefa.titulo}"`);
+        }
+      }
+      
       await updateEstatisticas();
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error);
