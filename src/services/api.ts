@@ -66,11 +66,20 @@ const clearAuthData = () => {
   localStorage.removeItem('offlineMode');
 };
 
-// Interceptor para adicionar token automaticamente - VERSÃO CORRIGIDA
+// Interceptor para adicionar token automaticamente - VERSÃO MELHORADA
 api.interceptors.request.use(
   (config) => {
-    // Pegar token do localStorage (prioridade) ou sessionStorage
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    // Pegar token SEMPRE do localStorage e sessionStorage
+    const tokenLocal = localStorage.getItem('token');
+    const tokenSession = sessionStorage.getItem('token');
+    const token = tokenLocal || tokenSession;
+    
+    console.log('🔐 [INTERCEPTOR] Debug token:', {
+      localStorage: tokenLocal ? `${tokenLocal.substring(0, 20)}...` : 'VAZIO',
+      sessionStorage: tokenSession ? `${tokenSession.substring(0, 20)}...` : 'VAZIO',
+      selecionado: token ? `${token.substring(0, 20)}...` : 'VAZIO',
+      url: config.url
+    });
     
     // Garantir que headers existe sempre
     if (!config.headers) {
@@ -81,16 +90,10 @@ api.interceptors.request.use(
       // Validar token antes de enviar
       if (isValidJWT(token)) {
         config.headers['Authorization'] = `Bearer ${token.trim()}`;
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔐 Token adicionado à requisição: ${token.substring(0, 30)}...`);
-        }
+        console.log(`✅ [INTERCEPTOR] Token adicionado à requisição para ${config.url}`);
       } else {
         console.warn('⚠️ Token inválido detectado, removendo...');
         clearAuthData();
-        // Para endpoints protegidos, redirecionar para login
-        if (config.url && (config.url.includes('/users') || config.url.includes('/processes') || config.url.includes('/tasks'))) {
-          window.location.href = '/login';
-        }
         return Promise.reject(new Error('Token inválido - faça login novamente'));
       }
     } else {
@@ -104,7 +107,7 @@ api.interceptors.request.use(
       );
       
       if (isProtectedRoute && config.url && !config.url.includes('/auth/login')) {
-        console.error('❌ Tentativa de acessar endpoint protegido sem token:', config.url);
+        console.error('❌ [INTERCEPTOR] Tentativa de acessar endpoint protegido sem token:', config.url);
         return Promise.reject(new Error('Token de autenticação necessário'));
       }
     }
@@ -311,9 +314,9 @@ export const userAPI = {
     const tokenSession = sessionStorage.getItem('token');
     const token = tokenLocal || tokenSession;
     
-    console.log('🔍 [USER CREATION] Token no localStorage:', tokenLocal ? `${tokenLocal.substring(0, 30)}...` : 'NENHUM');
-    console.log('🔍 [USER CREATION] Token no sessionStorage:', tokenSession ? `${tokenSession.substring(0, 30)}...` : 'NENHUM');
-    console.log('🔍 [USER CREATION] Token selecionado:', token ? `${token.substring(0, 30)}...` : 'NENHUM');
+    console.log('🔍 [USER CREATION] Token no localStorage:', tokenLocal ? `${tokenLocal.substring(0, 50)}...` : 'NENHUM');
+    console.log('🔍 [USER CREATION] Token no sessionStorage:', tokenSession ? `${tokenSession.substring(0, 50)}...` : 'NENHUM');
+    console.log('🔍 [USER CREATION] Token selecionado:', token ? `${token.substring(0, 50)}...` : 'NENHUM');
     
     if (!token) {
       console.error('❌ [USER CREATION] ERRO CRÍTICO: Nenhum token disponível!');
