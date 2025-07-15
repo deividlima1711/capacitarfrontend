@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Processo, Tarefa } from '../../types';
 import { useApp } from '../../contexts/AppContext';
+import UniversalAnexoManager from '../Anexos/UniversalAnexoManagerFinal';
 import './Modal.css';
 
 interface ProcessoDetalhesModalProps {
@@ -16,7 +17,6 @@ const ProcessoDetalhesModal: React.FC<ProcessoDetalhesModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'tarefas' | 'timeline' | 'comentarios'>('tarefas');
   const [novoComentario, setNovoComentario] = useState('');
-  const [anexos, setAnexos] = useState<Array<{id: number, nome: string, tipo: string, tamanho: string, data: string}>>([]);
   const { tarefas, usuarios, addTarefa, updateTarefa, deleteTarefa } = useApp();
 
   // Mock de timeline/histórico - Vamos criar um sistema mais dinâmico
@@ -187,36 +187,6 @@ const ProcessoDetalhesModal: React.FC<ProcessoDetalhesModalProps> = ({
   };
 
   // Função para adicionar anexos
-  const handleAddAnexo = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const novoAnexo = {
-          id: anexos.length + 1,
-          nome: file.name,
-          tipo: file.type || 'application/octet-stream',
-          tamanho: formatFileSize(file.size),
-          data: new Date().toLocaleString('pt-BR')
-        };
-        setAnexos(prev => [...prev, novoAnexo]);
-
-        // Adicionar evento na timeline
-        const novoEvento = {
-          id: timeline.length + 1,
-          data: new Date().toLocaleString('pt-BR'),
-          usuario: 'Administrador',
-          acao: 'Anexo adicionado',
-          detalhes: `Arquivo "${file.name}" foi anexado`,
-          tipo: 'anexo',
-          icone: '📎'
-        };
-        setTimeline([novoEvento, ...timeline]);
-      });
-    }
-    // Limpar o input
-    event.target.value = '';
-  };
-
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -250,15 +220,6 @@ const ProcessoDetalhesModal: React.FC<ProcessoDetalhesModalProps> = ({
         {statusInfo.label}
       </span>
     );
-  };
-
-  const getFileIcon = (tipo: string): string => {
-    if (tipo.includes('image')) return '🖼️';
-    if (tipo.includes('pdf')) return '📄';
-    if (tipo.includes('word')) return '📝';
-    if (tipo.includes('excel') || tipo.includes('spreadsheet')) return '📊';
-    if (tipo.includes('zip') || tipo.includes('rar')) return '📦';
-    return '📎';
   };
 
   return (
@@ -465,46 +426,18 @@ const ProcessoDetalhesModal: React.FC<ProcessoDetalhesModalProps> = ({
                   className="comentario-input"
                 />
                 
-                {/* Sistema de Anexos */}
+                {/* Sistema de Anexos Unificado */}
                 <div className="anexos-section">
-                  <div className="anexos-upload">
-                    <input
-                      type="file"
-                      id="anexo-input"
-                      multiple
-                      onChange={handleAddAnexo}
-                      style={{ display: 'none' }}
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar"
-                    />
-                    <label htmlFor="anexo-input" className="btn btn-secondary btn-sm">
-                      📎 Adicionar Anexos
-                    </label>
-                    <small className="anexos-info">
-                      Máx. 5MB por arquivo. Formatos: PDF, DOC, XLS, imagens, ZIP
-                    </small>
-                  </div>
-                  
-                  {anexos.length > 0 && (
-                    <div className="anexos-list">
-                      <h4>Anexos ({anexos.length})</h4>
-                      {anexos.map((anexo) => (
-                        <div key={anexo.id} className="anexo-item">
-                          <span className="anexo-icon">{getFileIcon(anexo.tipo)}</span>
-                          <div className="anexo-info">
-                            <span className="anexo-nome">{anexo.nome}</span>
-                            <small className="anexo-meta">{anexo.tamanho} • {anexo.data}</small>
-                          </div>
-                          <button 
-                            className="btn-icon btn-danger btn-sm"
-                            onClick={() => setAnexos(anexos.filter(a => a.id !== anexo.id))}
-                            title="Remover anexo"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <UniversalAnexoManager
+                    entityType="processes"
+                    entityId={processo?.id || 'temp'}
+                    canEdit={true}
+                    usuarios={usuarios}
+                    showPreview={true}
+                    maxFileSize={5 * 1024 * 1024} // 5MB
+                    allowedTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.zip', '.rar']}
+                    onError={(error) => alert(`Erro: ${error}`)}
+                  />
                 </div>
 
                 <div className="form-actions">
