@@ -91,10 +91,15 @@ export interface Notificacao {
   id: number;
   titulo: string;
   mensagem: string;
-  tipo: 'info' | 'warning' | 'error' | 'success';
+  tipo: 'info' | 'warning' | 'error' | 'success' | 'tarefa' | 'processo';
   lida: boolean;
   usuarioId: number;
   criadoEm: string;
+  // Navegação para tarefas/processos
+  tarefaId?: string;
+  processoId?: string;
+  action?: 'open_task' | 'open_process' | 'navigate';
+  link?: string;
 }
 
 export interface Estatisticas {
