@@ -7,10 +7,28 @@ import UsuarioList from './UsuarioList';
 import './Equipe.css';
 
 const Equipe: React.FC = () => {
-  const { usuarios, deleteUsuario, refreshData, loading } = useApp();
+  const { usuarios, deleteUsuario, refreshData, loading, user } = useApp();
   const { canAccess, canCreate, canEdit, canDelete } = usePermissions();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<User | null>(null);
+
+  // Debug para diagnosticar problema da lista vazia
+  React.useEffect(() => {
+    console.log('🔍 [EQUIPE] Debug completo:', {
+      usuariosCarregados: usuarios.length,
+      loading,
+      usuarioLogado: user ? `${user.nome} (${user.tipoUsuario})` : 'Nenhum',
+      token: localStorage.getItem('token') ? 'Presente' : 'Ausente',
+      permissaoEquipe: canAccess('equipe')
+    });
+    
+    if (usuarios.length === 0 && !loading) {
+      console.warn('⚠️ [EQUIPE] Lista de usuários está vazia - tentando forçar carregamento...');
+      setTimeout(() => {
+        handleRefreshData();
+      }, 1000);
+    }
+  }, [usuarios, loading, user]);
 
   // Verificar se o usuário tem permissão para acessar este módulo
   if (!canAccess('equipe')) {
