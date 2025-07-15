@@ -584,5 +584,61 @@ export const generalAPI = {
   }
 };
 
+// API para gerenciamento de anexos
+export const anexoAPI = {
+  upload: async (tarefaId: string, file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('tarefaId', tarefaId);
+    
+    try {
+      const response = await api.post(`/tasks/${tarefaId}/anexos`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('✅ Anexo enviado com sucesso:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao enviar anexo:', error);
+      throw error;
+    }
+  },
+
+  download: async (tarefaId: string, anexoId: string): Promise<Blob> => {
+    try {
+      const response = await api.get(`/tasks/${tarefaId}/anexos/${anexoId}/download`, {
+        responseType: 'blob',
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao baixar anexo:', error);
+      throw error;
+    }
+  },
+
+  delete: async (tarefaId: string, anexoId: string): Promise<void> => {
+    try {
+      await api.delete(`/tasks/${tarefaId}/anexos/${anexoId}`);
+      console.log('✅ Anexo removido com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao remover anexo:', error);
+      throw error;
+    }
+  },
+
+  list: async (tarefaId: string): Promise<any[]> => {
+    try {
+      const response = await api.get(`/tasks/${tarefaId}/anexos`);
+      return response.data.anexos || [];
+    } catch (error) {
+      console.error('❌ Erro ao listar anexos:', error);
+      throw error;
+    }
+  }
+};
+
 export default api;
 
