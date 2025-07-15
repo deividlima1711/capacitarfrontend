@@ -234,7 +234,7 @@ const Layout: React.FC<LayoutProps> = ({
 
           {/* Header Actions */}
           <div className="header-actions">
-            <NotificationButton />
+            <NotificationButton onNavigate={onSectionChange} />
             
             <button className="profile-btn" onClick={onLogout}>
               <span className="material-icons">account_circle</span>
