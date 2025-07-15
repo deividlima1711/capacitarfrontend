@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { User, Processo, Tarefa } from '../../types';
+import { User, Processo, Tarefa, Notificacao } from '../../types';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useApp } from '../../contexts/AppContext';
 import GlobalSearchResults from './GlobalSearchResults';
+import NotificationButton from '../Notifications/NotificationButton';
 import './Layout.css';
 import './GlobalSearchResults.css';
 
@@ -79,6 +80,47 @@ const Layout: React.FC<LayoutProps> = ({
     } else if (type === 'tarefa') {
       onSectionChange('tarefas');
       // Poderia abrir detalhes da tarefa, se existir
+    }
+  };
+
+  // Função para lidar com clique em notificação com navegação interativa
+  const handleNotificationClick = (notification: Notificacao) => {
+    // Marcar como lida
+    markNotificationAsRead(notification.id);
+    
+    // Navegar baseado no tipo de ação
+    if (notification.action === 'open_task' && notification.tarefaId) {
+      // Navegar para a seção de tarefas e abrir detalhes da tarefa
+      onSectionChange('tarefas');
+      
+      // Fechar dropdown de notificações
+      setNotificationsOpen(false);
+      
+      // Criar evento customizado para abrir modal da tarefa
+      const event = new CustomEvent('openTaskModal', { 
+        detail: { taskId: notification.tarefaId } 
+      });
+      window.dispatchEvent(event);
+      
+      console.log(`🔗 Navegando para tarefa ${notification.tarefaId} via notificação`);
+    } else if (notification.action === 'open_process' && notification.processoId) {
+      // Navegar para a seção de processos
+      onSectionChange('processos');
+      setNotificationsOpen(false);
+      
+      // Criar evento customizado para abrir modal do processo
+      const event = new CustomEvent('openProcessModal', { 
+        detail: { processId: notification.processoId } 
+      });
+      window.dispatchEvent(event);
+      
+      console.log(`🔗 Navegando para processo ${notification.processoId} via notificação`);
+    } else if (notification.link) {
+      // Navegação customizada via link
+      window.location.href = notification.link;
+    } else {
+      // Fallback: apenas fechar notificações
+      setNotificationsOpen(false);
     }
   };
 
@@ -192,42 +234,13 @@ const Layout: React.FC<LayoutProps> = ({
 
           {/* Header Actions */}
           <div className="header-actions">
-            <div className="notification-container">
-              <button 
-                className="notification-btn"
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-              >
-                <span className="material-icons">notifications</span>
-                {notificacoesNaoLidas.length > 0 && (
-                  <span className="notification-badge">{notificacoesNaoLidas.length}</span>
-                )}
-              </button>
-              {notificationsOpen && (
-                <div className="notification-dropdown">
-                  <div className="notification-header">Notificações</div>
-                  <div className="notification-list">
-                    {minhasNotificacoes.length === 0 ? (
-                      <div className="notification-empty">Nenhuma notificação</div>
-                    ) : (
-                      minhasNotificacoes.slice().reverse().map((n) => (
-                        <div key={n.id} className={`notification-item${n.lida ? '' : ' unread'}`}
-                          onClick={() => markNotificationAsRead(n.id)}
-                          style={{ cursor: 'pointer', padding: 8, borderBottom: '1px solid #eee', background: n.lida ? '#fff' : '#e3f2fd' }}
-                        >
-                          <div style={{ fontWeight: 600 }}>{n.titulo}</div>
-                          <div style={{ fontSize: 13 }}>{n.mensagem}</div>
-                          <div style={{ fontSize: 11, color: '#888' }}>{new Date(n.criadoEm).toLocaleString('pt-BR')}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationButton />
             
-            <div className="avatar">
-              <img src={user.avatar || "https://cdn-icons-png.flaticon.com/512/9131/9131546.png"} alt="Avatar" />
-            </div>
+            <button className="profile-btn" onClick={onLogout}>
+              <span className="material-icons">account_circle</span>
+              <span className="profile-name">{user.nome || user.username}</span>
+              <span className="material-icons">logout</span>
+            </button>
           </div>
         </div>
 
