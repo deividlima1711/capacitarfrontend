@@ -5,6 +5,7 @@ import { Tarefa } from '../../types';
 import TarefaModal from '../Modals/TarefaModal';
 import TarefaTableView from './TarefaTableView';
 import TarefaKanbanView from './TarefaKanbanView';
+import TarefaResolucaoModal from './TarefaResolucaoModal';
 import './Tarefas.css';
 
 const Tarefas: React.FC = () => {
@@ -13,6 +14,10 @@ const Tarefas: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTarefa, setEditingTarefa] = useState<Tarefa | null>(null);
+  
+  // Estado para modal de resolução de tarefa (navegação via notificação)
+  const [tarefaResolucaoModal, setTarefaResolucaoModal] = useState(false);
+  const [tarefaSelecionadaResolucao, setTarefaSelecionadaResolucao] = useState<Tarefa | null>(null);
 
   // 🔍 Log dos status reais (para depuração)
   useEffect(() => {
@@ -20,6 +25,30 @@ const Tarefas: React.FC = () => {
     tarefas.forEach(tarefa => {
       console.log(`- ${tarefa.titulo} | status: ${tarefa.status}`);
     });
+  }, [tarefas]);
+
+  // Escutar eventos de navegação de notificações
+  useEffect(() => {
+    const handleOpenTaskModal = (event: CustomEvent) => {
+      const { taskId } = event.detail;
+      const tarefa = tarefas.find(t => t.id === taskId);
+      
+      if (tarefa) {
+        console.log(`🔗 Abrindo modal da tarefa ${taskId} via notificação`);
+        setTarefaSelecionadaResolucao(tarefa);
+        setTarefaResolucaoModal(true);
+      } else {
+        console.warn(`⚠️ Tarefa ${taskId} não encontrada`);
+      }
+    };
+
+    // Adicionar listener para eventos customizados
+    window.addEventListener('openTaskModal', handleOpenTaskModal as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('openTaskModal', handleOpenTaskModal as EventListener);
+    };
   }, [tarefas]);
 
   // Exibe todas as tarefas do contexto, sem filtro restritivo
@@ -60,6 +89,11 @@ const Tarefas: React.FC = () => {
   const handleCloseModal = () => {
     setModalOpen(false);
     setEditingTarefa(null);
+  };
+
+  const handleCloseResolucaoModal = () => {
+    setTarefaResolucaoModal(false);
+    setTarefaSelecionadaResolucao(null);
   };
 
   return (
@@ -115,6 +149,19 @@ const Tarefas: React.FC = () => {
           isOpen={modalOpen}
           tarefa={editingTarefa ?? undefined}
           onClose={handleCloseModal}
+        />
+      )}
+
+      {/* Modal de Resolução de Tarefa (navegação via notificação) */}
+      {tarefaResolucaoModal && tarefaSelecionadaResolucao && (
+        <TarefaResolucaoModal
+          tarefa={tarefaSelecionadaResolucao}
+          aberto={tarefaResolucaoModal}
+          onClose={handleCloseResolucaoModal}
+          onStatusChange={(novoStatus) => {
+            // Implementar mudança de status aqui se necessário
+            console.log(`Alterando status da tarefa ${tarefaSelecionadaResolucao.id} para ${novoStatus}`);
+          }}
         />
       )}
     </div>
