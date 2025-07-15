@@ -1,0 +1,456 @@
+/* 🎨 UNIVERSAL ANEXO MANAGER - ESTILOS PADRONIZADOS */
+
+.universal-anexo-manager {
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.anexo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.anexo-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #172b4d;
+}
+
+.anexo-title .material-icons {
+  font-size: 20px;
+  color: #6b778c;
+}
+
+.btn-add-anexo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #0052cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-anexo:hover:not(:disabled) {
+  background: #0747a6;
+  transform: translateY(-1px);
+}
+
+.btn-add-anexo:disabled {
+  background: #b3bac5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-add-anexo .material-icons {
+  font-size: 18px;
+}
+
+/* Lista de Anexos */
+.anexo-list {
+  min-height: 60px;
+}
+
+.loading-state,
+.no-anexos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: #6b778c;
+  text-align: center;
+}
+
+.loading-state .material-icons,
+.no-anexos .material-icons {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.no-anexos p {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.no-anexos small {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Item de Anexo */
+.anexo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f7f8f9;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.anexo-item:hover {
+  background: #ebecf0;
+  border-color: #c1c7d0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.anexo-item:last-child {
+  margin-bottom: 0;
+}
+
+.anexo-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e3f2fd;
+  border-radius: 8px;
+}
+
+.anexo-icon .material-icons {
+  font-size: 24px;
+  color: #1976d2;
+}
+
+.anexo-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.anexo-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: #172b4d;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.anexo-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #6b778c;
+}
+
+.anexo-meta span {
+  display: flex;
+  align-items: center;
+}
+
+.anexo-size {
+  font-weight: 500;
+}
+
+.anexo-uploader {
+  font-style: italic;
+}
+
+/* Ações do Anexo */
+.anexo-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon .material-icons {
+  font-size: 16px;
+}
+
+.btn-preview {
+  border-color: #e3f2fd;
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.btn-preview:hover {
+  background: #bbdefb;
+  border-color: #90caf9;
+}
+
+.btn-download {
+  border-color: #e8f5e8;
+  background: #e8f5e8;
+  color: #388e3c;
+}
+
+.btn-download:hover {
+  background: #c8e6c9;
+  border-color: #a5d6a7;
+}
+
+.btn-delete {
+  border-color: #ffebee;
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.btn-delete:hover {
+  background: #ffcdd2;
+  border-color: #ef9a9a;
+}
+
+/* Modal de Preview */
+.preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.preview-modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e1e5e9;
+  background: #f7f8f9;
+}
+
+.preview-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #172b4d;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 16px;
+}
+
+.btn-close-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-close-preview:hover {
+  background: #e1e5e9;
+}
+
+.btn-close-preview .material-icons {
+  font-size: 20px;
+  color: #6b778c;
+}
+
+.preview-modal-body {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.loading-preview,
+.error-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #6b778c;
+}
+
+.loading-preview .material-icons,
+.error-preview .material-icons {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.preview-modal-actions {
+  padding: 16px 20px;
+  border-top: 1px solid #e1e5e9;
+  background: #f7f8f9;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-download-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #0052cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-download-preview:hover {
+  background: #0747a6;
+}
+
+/* Informações de Upload */
+.upload-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f3f4;
+  text-align: center;
+}
+
+.upload-info small {
+  color: #6b778c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .anexo-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .anexo-title {
+    justify-content: center;
+  }
+  
+  .anexo-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .anexo-actions {
+    align-self: center;
+  }
+  
+  .anexo-meta {
+    justify-content: center;
+  }
+  
+  .preview-modal-content {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+}
+
+/* Estados especiais */
+.anexo-item.uploading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.anexo-item.uploading .anexo-icon {
+  background: #fff3e0;
+}
+
+.anexo-item.uploading .anexo-icon .material-icons {
+  color: #f57c00;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Variações de tema */
+.universal-anexo-manager.compact {
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.universal-anexo-manager.compact .anexo-header {
+  margin-bottom: 12px;
+}
+
+.universal-anexo-manager.compact .anexo-item {
+  padding: 8px;
+  margin-bottom: 6px;
+}
+
+.universal-anexo-manager.borderless {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
