@@ -68,6 +68,7 @@ export interface Tarefa {
   horasGastas?: number;
   tags?: string[];
   comentarios?: Comentario[];
+  anexos?: Anexo[];
   modeloOrigem?: {
     modeloId: number;
     modeloNome: string;
@@ -78,6 +79,22 @@ export interface Tarefa {
   };
   criadoEm: string;
   atualizadoEm: string;
+}
+
+export interface Anexo {
+  id: string;
+  nome: string;
+  name?: string; // Alias para compatibilidade
+  tipo: string; // MIME type
+  type?: string; // Alias para compatibilidade
+  tamanho: number | string; // em bytes (number) ou formatado (string)
+  size?: number | string; // Alias para compatibilidade
+  data?: string; // Data de upload formatada
+  uploadDate?: string; // Alias para compatibilidade
+  criadoEm?: string; // Data ISO de criação
+  url?: string; // URL de acesso ao arquivo
+  uploadedBy?: number; // ID do usuário que fez upload
+  isUploading?: boolean; // Estado de upload em progresso
 }
 
 export interface Comentario {
