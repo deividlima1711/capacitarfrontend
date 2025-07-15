@@ -3,7 +3,11 @@ import { useApp } from '../../contexts/AppContext';
 import NotificationPanel from './NotificationPanel';
 import './NotificationButton.css';
 
-const NotificationButton: React.FC = () => {
+interface NotificationButtonProps {
+  onNavigate?: (section: string, id?: string) => void;
+}
+
+const NotificationButton: React.FC<NotificationButtonProps> = ({ onNavigate }) => {
   const { notificacoes } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -38,7 +42,8 @@ const NotificationButton: React.FC = () => {
       
       <NotificationPanel 
         isOpen={isOpen} 
-        onClose={closePanel} 
+        onClose={closePanel}
+        onNavigate={onNavigate}
       />
       
       {isOpen && (
