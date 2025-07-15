@@ -122,14 +122,16 @@ let reverseUserIdMap: Map<number, string> = new Map();
 
 // Função para mapear ObjectId do backend para number do frontend
 const mapBackendIdToFrontend = (backendId: string): number => {
+  // Validar se o ID é válido
+  if (!backendId || typeof backendId !== 'string' || backendId.length < 8) {
+    console.warn(`mapBackendIdToFrontend: backendId inválido: ${backendId}`);
+    return 0; // Retorna 0 como ID padrão para casos inválidos
+  }
+  
   if (userIdMap.has(backendId)) {
     return userIdMap.get(backendId)!;
   }
   
-  if (!backendId || typeof backendId !== 'string' || backendId.length < 8) {
-    // Valor inválido, retorna 0 ou outro valor padrão seguro
-    return 0;
-  }
   // Gerar ID numérico baseado no hash do ObjectId
   const numericId = parseInt(backendId.slice(-8), 16) % 1000000;
   userIdMap.set(backendId, numericId);
@@ -140,6 +142,12 @@ const mapBackendIdToFrontend = (backendId: string): number => {
 
 // Função para mapear number do frontend para ObjectId do backend
 const mapFrontendIdToBackend = (frontendId: number): string => {
+  // Validar se o ID é válido
+  if (!frontendId || typeof frontendId !== 'number' || frontendId <= 0) {
+    console.warn(`mapFrontendIdToBackend: frontendId inválido: ${frontendId}`);
+    return '000000000000000000000000'; // ObjectId padrão
+  }
+  
   if (reverseUserIdMap.has(frontendId)) {
     return reverseUserIdMap.get(frontendId)!;
   }
@@ -151,6 +159,12 @@ const mapFrontendIdToBackend = (frontendId: number): string => {
 
 // Transformadores de User
 export const transformBackendUserToFrontend = (backendUser: BackendUser): User => {
+  // Validar se o objeto backendUser é válido
+  if (!backendUser || !backendUser._id) {
+    console.warn('transformBackendUserToFrontend: backendUser inválido', backendUser);
+    throw new Error('Dados de usuário inválidos recebidos do backend');
+  }
+  
   const frontendId = mapBackendIdToFrontend(backendUser._id);
   
   return {
@@ -168,18 +182,22 @@ export const transformBackendUserToFrontend = (backendUser: BackendUser): User =
 };
 
 export const transformFrontendUserToBackend = (frontendUser: Partial<User>): Partial<BackendUser> => {
-  console.log('🔍 [TRANSFORMER] Dados de entrada do frontend:', frontendUser);
-  
+  // Mapear tipoUsuario para role do backend
+  const roleMap: { [key: string]: 'admin' | 'manager' | 'user' } = {
+    'Comum': 'user',
+    'Gestor': 'manager', 
+    'Financeiro': 'admin'
+  };
+
   const backendData: Partial<BackendUser> = {
     username: frontendUser.username,
-    name: frontendUser.nome,
+    name: frontendUser.nome,                    // ✅ CORRIGIDO: nome → name
     email: frontendUser.email,
-    role: frontendUser.role as 'admin' | 'manager' | 'user',
-    department: frontendUser.departamento,
-    isActive: true // Novos usuários são ativos por padrão
+    role: roleMap[frontendUser.tipoUsuario || ''] || 'user', // ✅ CORRIGIDO: tipoUsuario → role
+    department: frontendUser.departamento       // ✅ CORRIGIDO: departamento → department
   };
   
-  // Adicionar senha se fornecida (para criação ou atualização)
+  // Incluir password se fornecido (importante para criação de usuários)
   if ((frontendUser as any).password) {
     (backendData as any).password = (frontendUser as any).password;
   }
@@ -188,17 +206,6 @@ export const transformFrontendUserToBackend = (frontendUser: Partial<User>): Par
     const backendId = mapFrontendIdToBackend(frontendUser.id);
     backendData._id = backendId;
   }
-  
-  console.log('🔍 [TRANSFORMER] Dados transformados para o backend:');
-  console.log('  - username:', backendData.username);
-  console.log('  - name:', backendData.name);
-  console.log('  - email:', backendData.email);
-  console.log('  - role:', backendData.role);
-  console.log('  - department:', backendData.department);
-  console.log('  - isActive:', backendData.isActive);
-  console.log('  - password definida?:', !!(backendData as any).password);
-  console.log('  - _id:', backendData._id);
-  console.log('  - Objeto completo:', JSON.stringify(backendData, null, 2));
   
   return backendData;
 };
