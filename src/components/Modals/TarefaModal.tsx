@@ -19,10 +19,12 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
     titulo: '',
     descricao: '',
     status: 'pendente',
+    prioridade: 'media',
     dataInicio: '',
     prazo: '',
     processoId: '',
     responsavelId: '',
+    progresso: 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,10 +44,12 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
         titulo: tarefa.titulo,
         descricao: tarefa.descricao,
         status: tarefa.status,
+        prioridade: tarefa.prioridade || 'media',
         dataInicio: tarefa.dataInicio,
         prazo: tarefa.prazo,
         processoId: tarefa.processoId?.toString() || '',
         responsavelId: tarefa.responsavelId?.toString() || '',
+        progresso: tarefa.progresso || 0,
       });
       
       // Carregar anexos se for edição - o UniversalAnexoManager fará isso automaticamente
@@ -54,10 +58,12 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
         titulo: '',
         descricao: '',
         status: 'pendente',
+        prioridade: 'media',
         dataInicio: '',
         prazo: '',
         processoId: '',
         responsavelId: '',
+        progresso: 0,
       });
       setAnexos([]);
     }
@@ -95,6 +101,14 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
     }
 
     try {
+      const tipoTarefa = formData.processoId && formData.processoId.trim() ? 'VINCULADA_PROCESSO' : 'INDEPENDENTE';
+      console.log(`🔍 [TAREFA MODAL] Criando tarefa do tipo: ${tipoTarefa}`, {
+        titulo: formData.titulo,
+        processoId: formData.processoId,
+        responsavelId: formData.responsavelId,
+        tipoTarefa
+      });
+      
       // Construir objeto com tipos corretos, filtrando campos undefined
       const tarefaData: Partial<Tarefa> = {
         titulo: formData.titulo,
@@ -102,11 +116,16 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
         status: formData.status as Tarefa['status'],
         dataInicio: formData.dataInicio,
         prazo: formData.prazo,
+        prioridade: formData.prioridade as Tarefa['prioridade'],
+        progresso: formData.progresso
       };
 
       // Adicionar processoId apenas se não estiver vazio
       if (formData.processoId && formData.processoId.trim() !== '') {
         tarefaData.processoId = formData.processoId;
+        console.log('✅ [TAREFA MODAL] Tarefa VINCULADA ao processo:', formData.processoId);
+      } else {
+        console.log('ℹ️ [TAREFA MODAL] Tarefa INDEPENDENTE (relatórios, levantamentos, etc.)');
       }
 
       // Adicionar responsavelId apenas se não estiver vazio e for número válido
@@ -114,8 +133,11 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
         const responsavelIdNum = parseInt(formData.responsavelId);
         if (!isNaN(responsavelIdNum)) {
           tarefaData.responsavelId = responsavelIdNum;
+          console.log('✅ [TAREFA MODAL] Responsável atribuído:', responsavelIdNum);
         }
       }
+
+      console.log('📤 [TAREFA MODAL] Dados finais para envio:', tarefaData);
 
       // Remove campos undefined explicitamente
       Object.keys(tarefaData).forEach(
@@ -205,6 +227,21 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
                 <option value="atrasado">Atrasado</option>
               </select>
             </div>
+
+            <div className="form-group">
+              <label htmlFor="prioridade">Prioridade</label>
+              <select
+                id="prioridade"
+                name="prioridade"
+                value={formData.prioridade}
+                onChange={handleChange}
+              >
+                <option value="baixa">🟢 Baixa</option>
+                <option value="media">🟡 Média</option>
+                <option value="alta">🟠 Alta</option>
+                <option value="urgente">🔴 Urgente</option>
+              </select>
+            </div>
           </div>
 
           <div className="form-row">
@@ -237,20 +274,29 @@ const TarefaModal: React.FC<TarefaModalProps> = ({ isOpen, onClose, tarefa }) =>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="processoId">Processo</label>
+              <label htmlFor="processoId">
+                Processo 
+                <span className="field-info">(opcional - deixe vazio para tarefas independentes)</span>
+              </label>
               <select
                 id="processoId"
                 name="processoId"
                 value={formData.processoId}
                 onChange={handleChange}
               >
-                <option value="">Selecione um processo (opcional)</option>
+                <option value="">🔸 Tarefa Independente (sem processo)</option>
                 {processos.map((processo: Processo) => (
                   <option key={processo.id} value={processo.id}>
-                    {processo.titulo}
+                    📋 {processo.titulo}
                   </option>
                 ))}
               </select>
+              <small className="form-help">
+                {formData.processoId ? 
+                  '✅ Tarefa será vinculada ao processo selecionado' : 
+                  'ℹ️ Tarefa independente (ex: relatórios, levantamentos, solicitações avulsas)'
+                }
+              </small>
             </div>
 
             <div className="form-group">
