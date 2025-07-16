@@ -470,8 +470,22 @@ export const taskAPI = {
 
   create: async (taskData: Omit<Tarefa, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Tarefa> => {
     const backendData = transformFrontendTaskToBackend(taskData);
-    const response = await api.post<BackendTask>('/tasks', backendData);
-    return transformBackendTaskToFrontend(response.data);
+    
+    console.log('📤 [API.CREATE_TASK] Enviando para o backend:', {
+      url: '/tasks',
+      method: 'POST',
+      payload: backendData,
+      timestamp: new Date().toISOString()
+    });
+
+    try {
+      const response = await api.post<BackendTask>('/tasks', backendData);
+      console.log('✅ [API.CREATE_TASK] Resposta do backend:', response.data);
+      return transformBackendTaskToFrontend(response.data);
+    } catch (error: any) {
+      console.error('❌ [API.CREATE_TASK] Erro na requisição:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   update: async (id: string, taskData: Partial<Tarefa>): Promise<Tarefa> => {
