@@ -141,6 +141,7 @@
 
 /* Input number styling */
 input[type="number"] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
@@ -1072,5 +1073,34 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* Estilos para mensagens de ajuda */
+.form-help {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b778c;
+  font-style: italic;
+}
+
+.field-info {
+  font-size: 12px;
+  color: #6b778c;
+  font-weight: normal;
+  margin-left: 4px;
+}
+
+.form-group select option {
+  padding: 8px;
+}
+
+/* Destaque visual para diferentes tipos de tarefa */
+.task-type-independent {
+  color: #0052cc;
+}
+
+.task-type-process {
+  color: #006644;
 }
 
