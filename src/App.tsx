@@ -31,7 +31,6 @@ const AppContent: React.FC = () => {
     initializeRealUsersOnly();
     enforceRealUsersOnly();
     validateBackendConfig();
-    validateBackendConfig();
     
     const savedUser = localStorage.getItem('user');
     const savedToken = localStorage.getItem('token');
