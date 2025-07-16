@@ -191,11 +191,13 @@ export const authAPI = {
       });
       
       console.log(`📥 Resposta do backend recebida:`, response.status);
+      console.log(`📄 Dados recebidos:`, response.data);
       
       const { token, user } = response.data;
       
       // Validar resposta
       if (!token || !user) {
+        console.error('❌ Resposta inválida - token:', !!token, 'user:', !!user);
         throw new Error('Resposta inválida do servidor - token ou usuário ausente');
       }
       
@@ -203,6 +205,8 @@ export const authAPI = {
       if (!isValidJWT(token)) {
         throw new Error('Token recebido é inválido');
       }
+      
+      console.log('🔍 Dados do usuário antes da transformação:', user);
       
       const transformedUser = transformBackendUserToFrontend(user);
       
