@@ -747,6 +747,20 @@ export const generalAPI = {
       console.error('❌ Erro ao buscar estatísticas do dashboard:', error);
       return {};
     }
+  },
+
+  getStatus: async () => {
+    try {
+      // Verificar status geral do sistema
+      const response = await api.get('/health');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao verificar status do sistema:', error);
+      return {
+        status: 'error',
+        message: 'Não foi possível verificar o status do sistema'
+      };
+    }
   }
 };
 
