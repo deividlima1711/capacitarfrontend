@@ -57,8 +57,8 @@ export interface BackendTask {
   description?: string;
   status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDA' | 'CANCELADA';
   priority: 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
-  assignedTo: string; // ObjectId
-  process: string; // ObjectId
+  assignedTo?: string; // ObjectId - opcional
+  process?: string; // ObjectId - OPCIONAL (algumas tarefas podem ser independentes)
   startDate: string;
   dueDate?: string;
   completedDate?: string;
@@ -300,7 +300,7 @@ const getProcessStatusForBackend = (frontendStatus: string): 'PENDENTE' | 'EM_AN
 
 // Transformadores de Task
 export const transformBackendTaskToFrontend = (backendTask: BackendTask): Tarefa => {
-  const responsavelId = mapBackendIdToFrontend(backendTask.assignedTo);
+  const responsavelId = mapBackendIdToFrontend(backendTask.assignedTo || '');
   
   return {
     id: backendTask._id,
@@ -323,25 +323,64 @@ export const transformBackendTaskToFrontend = (backendTask: BackendTask): Tarefa
 };
 
 export const transformFrontendTaskToBackend = (frontendTask: Partial<Tarefa>): Partial<BackendTask> => {
+  console.log('🔄 [TRANSFORMER] Convertendo tarefa para backend:', {
+    titulo: frontendTask.titulo,
+    processoId: frontendTask.processoId,
+    hasProcesso: !!(frontendTask.processoId && frontendTask.processoId.trim()),
+    tipoTarefa: frontendTask.processoId ? 'VINCULADA_PROCESSO' : 'INDEPENDENTE'
+  });
+  
   const backendData: Partial<BackendTask> = {
     title: frontendTask.titulo,
     description: frontendTask.descricao,
-    status: frontendTask.status ? getTaskStatusForBackend(frontendTask.status) : undefined,
-    priority: frontendTask.prioridade ? priorityFrontendToBackend[frontendTask.prioridade] : undefined,
-    process: frontendTask.processoId,
     startDate: frontendTask.dataInicio,
-    dueDate: frontendTask.prazo,
-    completedDate: frontendTask.dataFim,
-    estimatedHours: frontendTask.estimativaHoras,
-    actualHours: frontendTask.horasGastas,
-    progress: frontendTask.progresso,
-    tags: frontendTask.tags
+    progress: frontendTask.progresso || 0
   };
+  
+  // Adicionar campos opcionais apenas se existirem
+  if (frontendTask.status) {
+    backendData.status = getTaskStatusForBackend(frontendTask.status);
+  }
+  
+  if (frontendTask.prioridade) {
+    backendData.priority = priorityFrontendToBackend[frontendTask.prioridade];
+  }
+  
+  // IMPORTANTE: Campo 'process' é OPCIONAL
+  // Só enviar se realmente há um processo vinculado
+  if (frontendTask.processoId && frontendTask.processoId.trim()) {
+    backendData.process = frontendTask.processoId;
+    console.log('✅ [TRANSFORMER] Tarefa VINCULADA ao processo:', frontendTask.processoId);
+  } else {
+    console.log('ℹ️ [TRANSFORMER] Tarefa INDEPENDENTE (sem processo vinculado)');
+    // NÃO adicionar o campo 'process' para tarefas independentes
+  }
   
   if (frontendTask.responsavelId) {
     backendData.assignedTo = mapFrontendIdToBackend(frontendTask.responsavelId);
   }
   
+  if (frontendTask.prazo) {
+    backendData.dueDate = frontendTask.prazo;
+  }
+  
+  if (frontendTask.dataFim) {
+    backendData.completedDate = frontendTask.dataFim;
+  }
+  
+  if (frontendTask.estimativaHoras) {
+    backendData.estimatedHours = frontendTask.estimativaHoras;
+  }
+  
+  if (frontendTask.horasGastas) {
+    backendData.actualHours = frontendTask.horasGastas;
+  }
+  
+  if (frontendTask.tags && frontendTask.tags.length > 0) {
+    backendData.tags = frontendTask.tags;
+  }
+  
+  console.log('📤 [TRANSFORMER] Payload final para backend:', backendData);
   return backendData;
 };
 
