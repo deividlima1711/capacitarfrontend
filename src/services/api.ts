@@ -727,5 +727,28 @@ export const anexoAPI = {
   }
 };
 
+// 📊 API GERAL PARA ESTATÍSTICAS DO DASHBOARD
+export const generalAPI = {
+  getDashboardStats: async () => {
+    try {
+      // Buscar estatísticas de todas as entidades
+      const [userStats, processStats, taskStats] = await Promise.all([
+        api.get('/users/stats/dashboard').catch(() => ({ data: {} })),
+        api.get('/processes/stats/dashboard').catch(() => ({ data: {} })),
+        api.get('/tasks/stats/dashboard').catch(() => ({ data: {} }))
+      ]);
+
+      return {
+        usuarios: userStats.data || {},
+        processos: processStats.data || {},
+        tarefas: taskStats.data || {}
+      };
+    } catch (error) {
+      console.error('❌ Erro ao buscar estatísticas do dashboard:', error);
+      return {};
+    }
+  }
+};
+
 export default api;
 
