@@ -2,16 +2,22 @@ import { User, Processo, Tarefa } from '../types';
 
 // Interfaces do Backend (baseadas na análise dos modelos)
 export interface BackendUser {
-  _id: string;
+  _id?: string;
+  id?: string; // Pode vir como id ou _id
   username: string;
-  name: string;
+  name?: string; // Backend pode enviar como 'name'
+  nome?: string; // ou como 'nome' (frontend)
   email: string;
   role: 'admin' | 'manager' | 'user';
+  tipoUsuario?: string; // Campo adicional do frontend
   department?: string;
+  departamento?: string; // Campo em português
+  cargo?: string;
   isActive: boolean;
   lastLogin?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  criadoEm?: string; // Campo em português
+  updatedAt?: string;
 }
 
 export interface BackendProcess {
@@ -160,24 +166,44 @@ const mapFrontendIdToBackend = (frontendId: number): string => {
 // Transformadores de User
 export const transformBackendUserToFrontend = (backendUser: BackendUser): User => {
   // Validar se o objeto backendUser é válido
-  if (!backendUser || !backendUser._id) {
-    console.warn('transformBackendUserToFrontend: backendUser inválido', backendUser);
+  if (!backendUser) {
+    console.error('❌ transformBackendUserToFrontend: backendUser é null/undefined');
     throw new Error('Dados de usuário inválidos recebidos do backend');
   }
   
-  const frontendId = mapBackendIdToFrontend(backendUser._id);
+  // Verificar se tem ID (pode ser _id ou id)
+  const userId = backendUser._id || backendUser.id;
+  if (!userId) {
+    console.error('❌ transformBackendUserToFrontend: backendUser sem ID', backendUser);
+    throw new Error('Dados de usuário inválidos recebidos do backend - ID ausente');
+  }
+  
+  // Verificar campos obrigatórios (aceitar tanto 'name' quanto 'nome')
+  const nome = backendUser.nome || backendUser.name;
+  if (!backendUser.username || !nome || !backendUser.email) {
+    console.error('❌ transformBackendUserToFrontend: campos obrigatórios ausentes', {
+      username: !!backendUser.username,
+      nome: !!nome,
+      email: !!backendUser.email,
+      data: backendUser
+    });
+    throw new Error('Dados de usuário incompletos recebidos do backend');
+  }
+  
+  const frontendId = mapBackendIdToFrontend(userId);
   
   return {
     id: frontendId,
     username: backendUser.username,
-    nome: backendUser.name,
+    nome: nome,
     email: backendUser.email,
     role: backendUser.role,
-    cargo: backendUser.role === 'admin' ? 'Administrador' : 
-           backendUser.role === 'manager' ? 'Gerente' : 'Usuário',
-    departamento: backendUser.department || 'Geral',
-    tipoUsuario: backendUser.role === 'admin' || backendUser.role === 'manager' ? 'Gestor' : 'Comum',
-    criadoEm: backendUser.createdAt
+    cargo: backendUser.cargo || (backendUser.role === 'admin' ? 'Administrador' : 
+           backendUser.role === 'manager' ? 'Gerente' : 'Usuário'),
+    departamento: backendUser.departamento || backendUser.department || 'Geral',
+    tipoUsuario: (backendUser.tipoUsuario as 'Gestor' | 'Comum' | 'Financeiro') || 
+                 (backendUser.role === 'admin' || backendUser.role === 'manager' ? 'Gestor' : 'Comum'),
+    criadoEm: backendUser.criadoEm || backendUser.createdAt
   };
 };
 
@@ -191,10 +217,11 @@ export const transformFrontendUserToBackend = (frontendUser: Partial<User>): Par
 
   const backendData: Partial<BackendUser> = {
     username: frontendUser.username,
-    name: frontendUser.nome,                    // ✅ CORRIGIDO: nome → name
+    nome: frontendUser.nome,                    // Manter nome em português
     email: frontendUser.email,
-    role: roleMap[frontendUser.tipoUsuario || ''] || 'user', // ✅ CORRIGIDO: tipoUsuario → role
-    department: frontendUser.departamento       // ✅ CORRIGIDO: departamento → department
+    role: roleMap[frontendUser.tipoUsuario || ''] || 'user',
+    departamento: frontendUser.departamento,    // Manter departamento em português
+    tipoUsuario: frontendUser.tipoUsuario
   };
   
   // Incluir password se fornecido (importante para criação de usuários)
@@ -336,8 +363,11 @@ export const initializeUserMapping = (backendUsers: BackendUser[]) => {
   reverseUserIdMap.clear();
   
   backendUsers.forEach(user => {
-    const frontendId = mapBackendIdToFrontend(user._id);
-    // O mapeamento já é feito na função mapBackendIdToFrontend
+    const userId = user._id || user.id;
+    if (userId) {
+      const frontendId = mapBackendIdToFrontend(userId);
+      // O mapeamento já é feito na função mapBackendIdToFrontend
+    }
   });
 };
 
