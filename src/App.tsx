@@ -9,7 +9,6 @@ import Equipe from './components/Equipe/Equipe';
 import Relatorios from './components/Relatorios/Relatorios';
 import ModelosProcessos from './components/ModelosProcessos/ModelosProcessos';
 import OfflineNotification from './components/OfflineNotification';
-import TestAnexoManager from './TestAnexoManager';
 import { validateBackendConfig, enforceRealUsersOnly } from './utils/backendConfig';
 import { initializeRealUsersOnly } from './config/realUsersOnly';
 import { User } from './types';
@@ -82,8 +81,6 @@ const AppContent: React.FC = () => {
         return <ModelosProcessos />;
       case 'configuracoes':
         return <Configuracoes />;
-      case 'test-anexos':
-        return <TestAnexoManager />;
       default:
         return <Dashboard />;
     }
